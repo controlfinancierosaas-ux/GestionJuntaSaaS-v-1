@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { uploadFilesToDrive } from "./drive-upload";
+import { uploadFileToDrive } from "@/lib/googleDrive";
 
 interface IncidentData {
   nombre_completo: string;
@@ -15,12 +15,28 @@ interface IncidentData {
   archivos?: Array<{ name: string; content: string }>;
 }
 
+function getMimeType(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  };
+  return mimeTypes[ext || ""] || "application/octet-stream";
+}
+
 export async function POST(request: Request) {
   console.log("=== Incidencia API started ===");
   
   try {
     const body = await request.json();
-    console.log("Received data:", JSON.stringify(body));
+    console.log("Received data keys:", Object.keys(body));
     
     const data: IncidentData = body;
 
@@ -48,31 +64,40 @@ export async function POST(request: Request) {
     // Parsear los documentos si existen
     let documentosArray: string[] = [];
     let documentosHtml = "No se adjuntaron documentos.";
-    let uploadedFiles: Array<{ name: string; webViewLink: string }> = [];
+    let uploadedFiles: Array<{ name: string; webViewLink: string; id: string }> = [];
     
     // Upload files to Google Drive if provided
     if (data.archivos && data.archivos.length > 0) {
       console.log("=== INCIDENCIA API: SUBIENDO ARCHIVOS ===");
-      console.log("Archivos a subir:", data.archivos.length);
+      console.log("Archivos a recibir:", data.archivos.length);
       try {
-        console.log(`Uploading ${data.archivos.length} files to Drive...`);
-        uploadedFiles = await uploadFilesToDrive(data.archivos);
+        for (const file of data.archivos) {
+          console.log(`Processing file: ${file.name}`);
+          const buffer = Buffer.from(file.content, "base64");
+          const mimeType = getMimeType(file.name);
+          const result = await uploadFileToDrive(buffer, file.name, mimeType);
+          uploadedFiles.push({
+            name: file.name,
+            webViewLink: result.webViewLink,
+            id: result.id
+          });
+        }
+        
         console.log("Files uploaded successfully:", uploadedFiles.length);
-        console.log("Uploaded files:", uploadedFiles);
         
         documentosArray = uploadedFiles.map(f => f.name);
         documentosHtml = `<ul style="list-style: none; padding: 0;">
           ${uploadedFiles.map(f => `<li style="padding: 5px 0;">📎 <a href="${f.webViewLink}" target="_blank">${f.name}</a></li>`).join('')}
         </ul>
         <p style="margin-top: 10px;">📁 Carpeta de documentos: <a href="${driveFolderUrl}" target="_blank">${driveFolderUrl}</a></p>`;
-    } catch (e) {
-        console.error("Error uploading files to Drive:", e);
+    } catch (e: any) {
+        console.error("Error uploading files to Drive:", e.message);
         // Fallback to file names only
         documentosArray = data.archivos.map(f => f.name);
         documentosHtml = `<ul style="list-style: none; padding: 0;">
           ${documentosArray.map(nombre => `<li style="padding: 5px 0;">📎 ${nombre}</li>`).join('')}
         </ul>
-        <p style="margin-top: 10px;">⚠️ Los documentos no se pudieron subir a Drive. Contacte al administrador.</p>`;
+        <p style="margin-top: 10px;">⚠️ Los documentos no se pudieron subir a Drive. Error: ${e.message}</p>`;
       }
     } else if (data.documentos) {
       // Legacy format: file names only
