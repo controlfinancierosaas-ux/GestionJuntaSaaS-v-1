@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Next.js Template",
-  description: "A minimal Next.js starter template",
+  title: "GestiónCondo - Sistema de Gestión de Juntas de Condominio",
+  description: "Sistema de gestión operativa para juntas de condominio. Control total de incidencias, gastos, mantenimientos, reservas, caja chica e inventario.",
 };
 
 export default function RootLayout({

@@ -1,0 +1,313 @@
+"use client";
+
+import { useState, useRef } from "react";
+import Link from "next/link";
+
+interface FileItem {
+  name: string;
+  size: number;
+  content?: string; // base64
+}
+
+export default function IncidenciasPage() {
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [reportNumber, setReportNumber] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFiles, setSelectedFiles] = useState<FileItem[]>([]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newFiles: FileItem[] = [];
+    for (let i = 0; i < files.length; i++) {
+      if (selectedFiles.length + newFiles.length >= 10) break;
+      
+      const file = files[i];
+      const base64 = await fileToBase64(file);
+      
+      newFiles.push({
+        name: file.name,
+        size: file.size,
+        content: base64,
+      });
+    }
+
+    setSelectedFiles([...selectedFiles, ...newFiles]);
+    
+    // Limpiar el input para permitir seleccionar más archivos
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+
+    if (selectedFiles.length > 0) {
+      setUploadProgress(`Preparando ${selectedFiles.length} archivo(s)...`);
+    }
+
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    if (selectedFiles.length > 0) {
+      (data as any).archivos = selectedFiles.map(f => ({
+        name: f.name,
+        content: f.content?.replace(/^data:[^;]+;base64,/, '') || '',
+      }));
+    }
+
+    try {
+      const res = await fetch("/api/incidencias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        setError(result.error || "Error al registrar la incidencia");
+        return;
+      }
+
+      setReportNumber(result.numero_reporte || "");
+      setSuccess(true);
+      setUploadProgress("");
+      e.currentTarget.reset();
+      setSelectedFiles([]);
+    } catch (err) {
+      setError("Error de conexión");
+      setUploadProgress("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  if (success) {
+    return (
+      <main className="min-h-screen bg-neutral-900 text-white">
+        <div className="max-w-4xl mx-auto p-8 text-center pt-32">
+          <div className="text-6xl mb-4">✅</div>
+          <h1 className="text-3xl font-bold mb-4">Incidencia Registrada</h1>
+          {reportNumber && (
+            <div className="bg-neutral-800 rounded-lg p-4 mb-6 inline-block">
+              <p className="text-neutral-400 text-sm">Número de Reporte</p>
+              <p className="text-2xl font-mono text-emerald-400">{reportNumber}</p>
+            </div>
+          )}
+          <p className="text-neutral-400 mb-8">
+            Tu reporte ha sido registrado exitosamente. Se han enviado notificaciones a los miembros de la junta y al técnico correspondiente.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Link href="/dashboard" className="px-6 py-3 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors">
+              Volver al Dashboard
+            </Link>
+            <button onClick={() => setSuccess(false)} className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors">
+              Reportar Otra
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-neutral-900 text-white">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-neutral-900/90 backdrop-blur-sm border-b border-neutral-800">
+        <nav className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+              <span className="text-lg font-bold">🏢</span>
+            </div>
+            <span className="text-xl font-semibold">GestiónCondo</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard" className="text-neutral-400 hover:text-white transition-colors">Panel de Control</Link>
+          </div>
+        </nav>
+      </header>
+
+      <section className="pt-32 pb-20 px-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Reportar Incidencia</h1>
+            <p className="text-neutral-400">
+              Describe el problema encontrado para notificar a la junta de condominio y al técnico correspondiente
+            </p>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-center">
+              {error}
+            </div>
+          )}
+
+          {uploadProgress && (
+            <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/50 rounded-lg text-blue-400 text-center">
+              {uploadProgress}
+            </div>
+          )}
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="nombre_completo" className="block text-sm font-medium mb-2">Nombre Completo *</label>
+                <input type="text" id="nombre_completo" name="nombre_completo" required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="Juan Pérez" />
+              </div>
+              <div>
+                <label htmlFor="apartamento" className="block text-sm font-medium mb-2">Apartamento *</label>
+                <input type="text" id="apartamento" name="apartamento" required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="Torre A, Piso 5, Apto 501" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="telefono" className="block text-sm font-medium mb-2">Teléfono de Contacto *</label>
+                <input type="tel" id="telefono" name="telefono" required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="0412-1234567" />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium mb-2">Correo Electrónico</label>
+                <input type="email" id="email" name="email" className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="correo@ejemplo.com" />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="tipo_incidencia" className="block text-sm font-medium mb-2">Tipo de Incidencia *</label>
+              <select id="tipo_incidencia" name="tipo_incidencia" required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none">
+                <option value="">Selecciona el tipo</option>
+                <option value="Ascensor">Ascensor</option>
+                <option value="Bomba de Agua">Bomba de Agua</option>
+                <option value="Portón de Estacionamiento">Portón de Estacionamiento</option>
+                <option value="Sistema Eléctrico">Sistema Eléctrico</option>
+                <option value="Plomería">Plomería</option>
+                <option value="CCTV / Cámaras">CCTV / Cámaras</option>
+                <option value="Control de Accesos">Control de Accesos</option>
+                <option value="Jardinería">Jardinería</option>
+                <option value="Pintura">Pintura</option>
+                <option value="Áreas Comunes">Áreas Comunes</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="descripcion" className="block text-sm font-medium mb-2">Descripción Detallada del Problema *</label>
+              <textarea id="descripcion" name="descripcion" rows={4} required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="Describe detalladamente el problema encontrado..."></textarea>
+            </div>
+
+            <div>
+              <label htmlFor="justificacion" className="block text-sm font-medium mb-2">Justificación / Observaciones</label>
+              <textarea id="justificacion" name="justificacion" rows={2} className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="Información adicional que considere relevante..."></textarea>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="prioridad" className="block text-sm font-medium mb-2">Prioridad *</label>
+                <select id="prioridad" name="prioridad" required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none">
+                  <option value="Baja">Baja</option>
+                  <option value="Media" selected>Media</option>
+                  <option value="Alta">Alta</option>
+                  <option value="Urgente">Urgente</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="ubicacion" className="block text-sm font-medium mb-2">Ubicación Específica</label>
+                <input type="text" id="ubicacion" name="ubicacion" className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="Ej: Piso 10, Pasillo norte" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Documentos Adjuntos (Fotos, Videos)</label>
+              <p className="text-neutral-500 text-sm mb-2">Selecciona hasta 10 archivos de tu computadora. Puedes seleccionar varios a la vez.</p>
+              
+              {/* Botón para agregar archivos */}
+              <div className="flex gap-2 mb-3">
+                <input 
+                  type="file" 
+                  id="documentos" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  multiple 
+                  accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+                  className="hidden"
+                />
+                <label 
+                  htmlFor="documentos" 
+                  className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg transition-colors cursor-pointer inline-block"
+                >
+                  + Agregar Archivos
+                </label>
+                <span className="text-neutral-400 text-sm self-center">
+                  ({selectedFiles.length}/10 archivos)
+                </span>
+              </div>
+
+              {/* Lista de archivos seleccionados */}
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-neutral-800 border border-neutral-700 rounded-lg">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <span className="text-lg">📎</span>
+                        <div className="overflow-hidden">
+                          <p className="text-sm truncate">{file.name}</p>
+                          <p className="text-xs text-neutral-500">{formatFileSize(file.size)}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="text-red-400 hover:text-red-300 px-2 py-1 text-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button type="submit" disabled={loading} className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? "Enviando..." : "Reportar Incidencia"}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <footer className="py-8 px-6 border-t border-neutral-800">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🏢</span>
+            <span className="text-neutral-500">GestiónCondo © 2026</span>
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}
