@@ -10,6 +10,20 @@ let driveClient: drive_v3.Drive | null = null;
 function getDriveClient(): drive_v3.Drive {
   if (driveClient) return driveClient;
 
+  // Prioridad 1: OAuth2 (Recomendado para cuentas @gmail.com personales)
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  if (clientId && clientSecret && refreshToken) {
+    console.log("Using OAuth2 authentication (User Quota)");
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+    return driveClient;
+  }
+
+  // Prioridad 2: Service Account (Solo funciona bien con Google Workspace / Shared Drives)
   const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY;
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
@@ -19,6 +33,7 @@ function getDriveClient(): drive_v3.Drive {
   if (credentialsJson) {
     try {
       const credentials = JSON.parse(credentialsJson);
+      console.log("Using Service Account JSON (Service Account Quota)");
       auth = new google.auth.GoogleAuth({
         credentials,
         scopes: SCOPES,
@@ -28,6 +43,7 @@ function getDriveClient(): drive_v3.Drive {
       throw error;
     }
   } else if (privateKey && clientEmail) {
+    console.log("Using Service Account Individual Vars");
     auth = new google.auth.GoogleAuth({
       credentials: {
         type: 'service_account',
@@ -38,7 +54,7 @@ function getDriveClient(): drive_v3.Drive {
       scopes: SCOPES,
     });
   } else {
-    throw new Error("No Google Drive credentials found in environment variables.");
+    throw new Error("No Google Drive credentials found. Please set GOOGLE_REFRESH_TOKEN or GOOGLE_SERVICE_ACCOUNT_JSON.");
   }
 
   driveClient = google.drive({ version: 'v3', auth });
