@@ -13,9 +13,14 @@ function getDriveClient(): drive_v3.Drive {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
-  // Intentar OAuth2 primero (Recomendado)
+  console.log("--- GOOGLE DRIVE AUTH ATTEMPT ---");
+  
   if (clientId && clientSecret && refreshToken) {
-    console.log("Attempting OAuth2 Auth...");
+    // Log para verificar qué credenciales está tomando Vercel realmente
+    const idSnippet = clientId.includes('-') ? clientId.split('-')[1].substring(0, 10) : "invalid";
+    console.log(`Auth Method: OAuth2. Client ID unique part starts with: ${idSnippet}`);
+    console.log(`Refresh Token starts with: ${refreshToken.substring(0, 6)}...`);
+
     try {
       const oauth2Client = new google.auth.OAuth2(
         clientId,
@@ -26,14 +31,13 @@ function getDriveClient(): drive_v3.Drive {
       driveClient = google.drive({ version: 'v3', auth: oauth2Client });
       return driveClient;
     } catch (e: any) {
-      console.error("OAuth2 setup failed:", e.message);
+      console.error("OAuth2 client initialization failed:", e.message);
     }
   }
 
-  // Fallback a Service Account
   const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (credentialsJson) {
-    console.log("Attempting Service Account Auth...");
+    console.log("Auth Method: Service Account fallback");
     try {
       const auth = new google.auth.GoogleAuth({
         credentials: JSON.parse(credentialsJson),
@@ -42,11 +46,11 @@ function getDriveClient(): drive_v3.Drive {
       driveClient = google.drive({ version: 'v3', auth });
       return driveClient;
     } catch (e: any) {
-      console.error("Service Account setup failed:", e.message);
+      console.error("Service account initialization failed:", e.message);
     }
   }
 
-  throw new Error("No valid Google Drive credentials found.");
+  throw new Error("Missing valid Google Drive credentials in Vercel environment variables.");
 }
 
 export async function uploadFileToDrive(
@@ -54,7 +58,7 @@ export async function uploadFileToDrive(
   fileName: string,
   mimeType: string = 'application/octet-stream'
 ): Promise<{ id: string; webViewLink: string }> {
-  console.log(`Uploading: ${fileName}`);
+  console.log(`[Upload] Processing file: ${fileName}`);
   
   try {
     const drive = getDriveClient();
@@ -72,16 +76,19 @@ export async function uploadFileToDrive(
       supportsAllDrives: true,
     } as any);
 
-    console.log(`Upload successful: ${response.data.id}`);
+    console.log(`[Upload] Success! File ID: ${response.data.id}`);
     
     return {
       id: response.data.id || '',
       webViewLink: response.data.webViewLink || `https://drive.google.com/file/d/${response.data.id}/view`,
     };
   } catch (error: any) {
-    console.error(`Upload error [${fileName}]:`, error.message);
+    console.error(`[Upload] Error [${fileName}]:`, error.message);
     if (error.response?.data) {
-      console.error("Google Error Details:", JSON.stringify(error.response.data));
+      console.error("Google API detailed error:", JSON.stringify(error.response.data));
+      if (error.response.status === 401) {
+        console.error("CRITICAL: The credentials (ID, Secret, or Refresh Token) do not match. Please follow the 'Zero to Hero' procedure.");
+      }
     }
     throw error;
   }
