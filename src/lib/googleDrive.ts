@@ -1,4 +1,5 @@
 import { google, drive_v3 } from 'googleapis';
+import { Readable } from 'stream';
 
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
 
@@ -9,27 +10,33 @@ let drive: drive_v3.Drive | null = null;
 function getDriveClient(): drive_v3.Drive {
   if (drive) return drive;
 
+  console.log("--- GOOGLE DRIVE AUTH DEBUG ---");
   const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY;
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+
+  console.log("GOOGLE_SERVICE_ACCOUNT_JSON exists:", !!credentialsJson);
+  console.log("GOOGLE_PRIVATE_KEY exists:", !!privateKey);
+  console.log("GOOGLE_CLIENT_EMAIL exists:", !!clientEmail);
+  console.log("FOLDER_ID:", FOLDER_ID);
 
   let auth;
 
   if (credentialsJson) {
     try {
       const credentials = JSON.parse(credentialsJson);
-      console.log("Using GOOGLE_SERVICE_ACCOUNT_JSON for Drive authentication");
+      console.log("Auth Method: GOOGLE_SERVICE_ACCOUNT_JSON");
       console.log("Service Account Email:", credentials.client_email);
       auth = new google.auth.GoogleAuth({
         credentials,
         scopes: SCOPES,
       });
-    } catch (error) {
-      console.error("Error parsing GOOGLE_SERVICE_ACCOUNT_JSON:", error);
-      throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format");
+    } catch (error: any) {
+      console.error("FATAL: Error parsing GOOGLE_SERVICE_ACCOUNT_JSON:", error.message);
+      throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format: " + error.message);
     }
   } else if (privateKey && clientEmail) {
-    console.log("Using individual GOOGLE_PRIVATE_KEY and GOOGLE_CLIENT_EMAIL for Drive authentication");
+    console.log("Auth Method: Individual Env Vars");
     console.log("Service Account Email:", clientEmail);
     const credentials = {
       type: 'service_account',
@@ -42,7 +49,8 @@ function getDriveClient(): drive_v3.Drive {
       scopes: SCOPES,
     });
   } else {
-    throw new Error("Google Drive credentials not configured. Please set GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_PRIVATE_KEY and GOOGLE_CLIENT_EMAIL.");
+    console.error("FATAL: No credentials found in environment variables");
+    throw new Error("Google Drive credentials not configured.");
   }
 
   drive = google.drive({ version: 'v3', auth });
@@ -54,10 +62,15 @@ export async function uploadFileToDrive(
   fileName: string,
   mimeType: string = 'application/octet-stream'
 ): Promise<{ id: string; webViewLink: string }> {
+  console.log(`--- START UPLOAD: ${fileName} (${fileBuffer.length} bytes) ---`);
+  
   try {
     const driveClient = getDriveClient();
     
-    console.log(`Attempting to upload file: ${fileName} to folder: ${FOLDER_ID}`);
+    // Crear el stream de forma compatible con Node.js y Next.js
+    const stream = new Readable();
+    stream.push(fileBuffer);
+    stream.push(null);
 
     const response = await driveClient.files.create({
       requestBody: {
@@ -66,31 +79,32 @@ export async function uploadFileToDrive(
       },
       media: {
         mimeType,
-        body: require('stream').Readable.from(fileBuffer),
+        body: stream,
       },
       supportsAllDrives: true,
+      fields: 'id, name, webViewLink'
     } as any);
 
     const fileId = response.data.id || '';
+    console.log(`SUCCESS: File ${fileName} uploaded with ID: ${fileId}`);
     
-    // Ensure the file is readable by everyone if needed, or at least get the link
-    // By default, it inherits folder permissions
-    
-    const fileInfo = await driveClient.files.get({ 
-      fileId, 
-      fields: 'webViewLink' 
-    });
-    
-    console.log(`Successfully uploaded: ${fileName} - ID: ${fileId}`);
     return {
       id: fileId,
-      webViewLink: fileInfo.data.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
+      webViewLink: response.data.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
     };
   } catch (error: any) {
-    console.error('Error in uploadFileToDrive:', error.message);
+    console.error(`--- ERROR UPLOADING ${fileName} ---`);
+    console.error('Error Message:', error.message);
+    
     if (error.response) {
-      console.error('Data:', error.response.data);
+      console.error('Google API Error Response:', JSON.stringify(error.response.data, null, 2));
+      console.error('Status Code:', error.response.status);
+    } else if (error.request) {
+      console.error('No response received from Google API. Check network/Vercel limits.');
+    } else {
+      console.error('General Error Stack:', error.stack);
     }
+    
     throw error;
   }
 }

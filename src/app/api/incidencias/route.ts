@@ -68,36 +68,51 @@ export async function POST(request: Request) {
     
     // Upload files to Google Drive if provided
     if (data.archivos && data.archivos.length > 0) {
-      console.log("=== INCIDENCIA API: SUBIENDO ARCHIVOS ===");
-      console.log("Archivos a recibir:", data.archivos.length);
+      console.log("=== INCIDENCIA API: PROCESSING ARCHIVOS ===");
+      console.log("Total files in request:", data.archivos.length);
+      
       try {
-        for (const file of data.archivos) {
-          console.log(`Processing file: ${file.name}`);
+        for (const [index, file] of data.archivos.entries()) {
+          console.log(`Processing file [${index + 1}/${data.archivos.length}]: ${file.name}`);
+          
+          if (!file.content) {
+            console.error(`File ${file.name} has no content! Skipping.`);
+            continue;
+          }
+
+          console.log(`Decoding base64 content for ${file.name} (Length: ${file.content.length})`);
           const buffer = Buffer.from(file.content, "base64");
+          console.log(`Buffer created for ${file.name} (Size: ${buffer.length} bytes)`);
+          
           const mimeType = getMimeType(file.name);
-          const result = await uploadFileToDrive(buffer, file.name, mimeType);
-          uploadedFiles.push({
-            name: file.name,
-            webViewLink: result.webViewLink,
-            id: result.id
-          });
+          
+          try {
+            const result = await uploadFileToDrive(buffer, file.name, mimeType);
+            uploadedFiles.push({
+              name: file.name,
+              webViewLink: result.webViewLink,
+              id: result.id
+            });
+          } catch (uploadError: any) {
+            console.error(`Individual upload failed for ${file.name}:`, uploadError.message);
+            // We continue with other files if one fails
+          }
         }
         
-        console.log("Files uploaded successfully:", uploadedFiles.length);
+        console.log("Final upload count:", uploadedFiles.length);
         
-        documentosArray = uploadedFiles.map(f => f.name);
-        documentosHtml = `<ul style="list-style: none; padding: 0;">
-          ${uploadedFiles.map(f => `<li style="padding: 5px 0;">📎 <a href="${f.webViewLink}" target="_blank">${f.name}</a></li>`).join('')}
-        </ul>
-        <p style="margin-top: 10px;">📁 Carpeta de documentos: <a href="${driveFolderUrl}" target="_blank">${driveFolderUrl}</a></p>`;
+        if (uploadedFiles.length > 0) {
+          documentosArray = uploadedFiles.map(f => f.name);
+          documentosHtml = `<ul style="list-style: none; padding: 0;">
+            ${uploadedFiles.map(f => `<li style="padding: 5px 0;">📎 <a href="${f.webViewLink}" target="_blank">${f.name}</a></li>`).join('')}
+          </ul>
+          <p style="margin-top: 10px;">📁 Carpeta de documentos: <a href="${driveFolderUrl}" target="_blank">${driveFolderUrl}</a></p>`;
+        } else {
+          documentosHtml = `<p style="color: #ef4444;">⚠️ Hubo errores al subir los documentos a Google Drive. Por favor, revise los logs del servidor.</p>`;
+        }
     } catch (e: any) {
-        console.error("Error uploading files to Drive:", e.message);
-        // Fallback to file names only
-        documentosArray = data.archivos.map(f => f.name);
-        documentosHtml = `<ul style="list-style: none; padding: 0;">
-          ${documentosArray.map(nombre => `<li style="padding: 5px 0;">📎 ${nombre}</li>`).join('')}
-        </ul>
-        <p style="margin-top: 10px;">⚠️ Los documentos no se pudieron subir a Drive. Error: ${e.message}</p>`;
+        console.error("Critical error in upload loop:", e.message);
+        documentosHtml = `<p style="color: #ef4444;">⚠️ Error crítico del servidor al procesar archivos: ${e.message}</p>`;
       }
     } else if (data.documentos) {
       // Legacy format: file names only
