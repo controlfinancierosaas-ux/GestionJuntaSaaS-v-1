@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { uploadFileToDrive } from "@/lib/googleDrive";
 
+// Configuración para permitir archivos más grandes y mayor tiempo de ejecución en Vercel
+export const maxDuration = 60; // 60 segundos (requiere plan Pro, en Hobby será el máximo permitido de 10-15s)
+export const dynamic = 'force-dynamic';
+
 interface IncidentData {
   nombre_completo: string;
   apartamento: string;
@@ -32,11 +36,16 @@ function getMimeType(filename: string): string {
 }
 
 export async function POST(request: Request) {
-  console.log("=== Incidencia API started ===");
+  console.log("!!! API INVOCATION !!! Time:", new Date().toISOString());
   
   try {
+    // Verificar el tamaño aproximado del body antes de parsear
+    const contentType = request.headers.get("content-type");
+    const contentLength = request.headers.get("content-length");
+    console.log(`Request Content-Type: ${contentType}, Content-Length: ${contentLength}`);
+
     const body = await request.json();
-    console.log("Received data keys:", Object.keys(body));
+    console.log("Body parsed successfully. Data keys:", Object.keys(body));
     
     const data: IncidentData = body;
 
@@ -68,38 +77,38 @@ export async function POST(request: Request) {
     
     // Upload files to Google Drive if provided
     if (data.archivos && data.archivos.length > 0) {
-      console.log("=== INCIDENCIA API: PROCESSING ARCHIVOS ===");
+      console.log("=== INCIDENCIA API: PROCESSING ARCHIVOS (PARALLEL) ===");
       console.log("Total files in request:", data.archivos.length);
       
       try {
-        for (const [index, file] of data.archivos.entries()) {
-          console.log(`Processing file [${index + 1}/${data.archivos.length}]: ${file.name}`);
+        const uploadPromises = data.archivos.map(async (file, index) => {
+          console.log(`Starting parallel upload [${index + 1}]: ${file.name}`);
           
           if (!file.content) {
-            console.error(`File ${file.name} has no content! Skipping.`);
-            continue;
+            console.error(`File ${file.name} has no content!`);
+            return null;
           }
 
-          console.log(`Decoding base64 content for ${file.name} (Length: ${file.content.length})`);
           const buffer = Buffer.from(file.content, "base64");
-          console.log(`Buffer created for ${file.name} (Size: ${buffer.length} bytes)`);
-          
           const mimeType = getMimeType(file.name);
           
           try {
             const result = await uploadFileToDrive(buffer, file.name, mimeType);
-            uploadedFiles.push({
+            return {
               name: file.name,
               webViewLink: result.webViewLink,
               id: result.id
-            });
+            };
           } catch (uploadError: any) {
-            console.error(`Individual upload failed for ${file.name}:`, uploadError.message);
-            // We continue with other files if one fails
+            console.error(`Upload failed for ${file.name}:`, uploadError.message);
+            return null;
           }
-        }
+        });
+
+        const results = await Promise.all(uploadPromises);
+        uploadedFiles = results.filter((f): f is { name: string; webViewLink: string; id: string } => f !== null);
         
-        console.log("Final upload count:", uploadedFiles.length);
+        console.log("Final upload success count:", uploadedFiles.length);
         
         if (uploadedFiles.length > 0) {
           documentosArray = uploadedFiles.map(f => f.name);
@@ -111,7 +120,7 @@ export async function POST(request: Request) {
           documentosHtml = `<p style="color: #ef4444;">⚠️ Hubo errores al subir los documentos a Google Drive. Por favor, revise los logs del servidor.</p>`;
         }
     } catch (e: any) {
-        console.error("Critical error in upload loop:", e.message);
+        console.error("Critical error in parallel upload process:", e.message);
         documentosHtml = `<p style="color: #ef4444;">⚠️ Error crítico del servidor al procesar archivos: ${e.message}</p>`;
       }
     } else if (data.documentos) {
