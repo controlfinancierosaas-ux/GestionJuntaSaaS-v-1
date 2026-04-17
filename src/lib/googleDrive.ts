@@ -10,55 +10,49 @@ let driveClient: drive_v3.Drive | null = null;
 function getDriveClient(): drive_v3.Drive {
   if (driveClient) return driveClient;
 
-  // Prioridad 1: OAuth2 (Recomendado para cuentas @gmail.com personales)
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
   if (clientId && clientSecret && refreshToken) {
-    console.log("Using OAuth2 authentication (User Quota)");
-    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-    oauth2Client.setCredentials({ refresh_token: refreshToken });
-    driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+    console.log("--- OAUTH2 DEBUG INFO ---");
+    console.log("Client ID (starts with):", clientId.substring(0, 10) + "...");
+    console.log("Refresh Token (starts with):", refreshToken.substring(0, 5) + "...");
+    
+    if (refreshToken.startsWith('4/')) {
+      console.error("WARNING: GOOGLE_REFRESH_TOKEN looks like an Authorization Code, not a Refresh Token!");
+    }
+
+    try {
+      const oauth2Client = new google.auth.OAuth2(
+        clientId,
+        clientSecret,
+        'https://developers.google.com/oauthplayground'
+      );
+      
+      oauth2Client.setCredentials({ refresh_token: refreshToken });
+      
+      driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+      return driveClient;
+    } catch (e: any) {
+      console.error("Error creating OAuth2 client:", e.message);
+      throw e;
+    }
+  }
+
+  // Fallback a cuenta de servicio
+  const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (credentialsJson) {
+    console.log("Using Service Account fallback");
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(credentialsJson),
+      scopes: SCOPES,
+    });
+    driveClient = google.drive({ version: 'v3', auth });
     return driveClient;
   }
 
-  // Prioridad 2: Service Account (Solo funciona bien con Google Workspace / Shared Drives)
-  const credentialsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-
-  let auth;
-
-  if (credentialsJson) {
-    try {
-      const credentials = JSON.parse(credentialsJson);
-      console.log("Using Service Account JSON (Service Account Quota)");
-      auth = new google.auth.GoogleAuth({
-        credentials,
-        scopes: SCOPES,
-      });
-    } catch (error: any) {
-      console.error("Error parsing JSON credentials:", error.message);
-      throw error;
-    }
-  } else if (privateKey && clientEmail) {
-    console.log("Using Service Account Individual Vars");
-    auth = new google.auth.GoogleAuth({
-      credentials: {
-        type: 'service_account',
-        project_id: process.env.GOOGLE_PROJECT_ID,
-        private_key: privateKey.replace(/\\n/g, '\n'),
-        client_email: clientEmail,
-      },
-      scopes: SCOPES,
-    });
-  } else {
-    throw new Error("No Google Drive credentials found. Please set GOOGLE_REFRESH_TOKEN or GOOGLE_SERVICE_ACCOUNT_JSON.");
-  }
-
-  driveClient = google.drive({ version: 'v3', auth });
-  return driveClient;
+  throw new Error("No Google Drive credentials found in environment variables.");
 }
 
 export async function uploadFileToDrive(
@@ -99,6 +93,9 @@ export async function uploadFileToDrive(
     if (error.response) {
       console.error("Status:", error.response.status);
       console.error("Data:", JSON.stringify(error.response.data));
+      if (error.response.status === 401) {
+        console.error("CONSEJO: El Refresh Token o el Client ID/Secret son inválidos. Vuelve a generarlos en el OAuth2 Playground.");
+      }
     } else {
       console.error("Message:", error.message);
     }
