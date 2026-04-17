@@ -16,8 +16,10 @@ function getDriveClient(): drive_v3.Drive {
 
   if (clientId && clientSecret && refreshToken) {
     console.log("--- OAUTH2 DEBUG INFO ---");
-    console.log("Client ID (ends with):", "..." + clientId.substring(clientId.length - 15));
-    console.log("Refresh Token (starts with):", refreshToken.substring(0, 7) + "...");
+    const idParts = clientId.split("-");
+    const uniquePart = idParts.length > 1 ? idParts[1].split(".")[0] : "invalid-format";
+    console.log("Client ID Unique Part (verify this):", uniquePart);
+    console.log("Refresh Token (starts with):", refreshToken.substring(0, 10) + "...");
     
     if (refreshToken.startsWith('4/')) {
       console.error("WARNING: GOOGLE_REFRESH_TOKEN looks like an Authorization Code, not a Refresh Token!");
