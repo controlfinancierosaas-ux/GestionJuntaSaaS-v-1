@@ -67,6 +67,7 @@ export async function uploadFilesToDrive(
           mimeType: getMimeType(file.name),
           body: stream,
         },
+        supportsAllDrives: true,
       });
 
       if (response.data.id && response.data.name) {

@@ -177,7 +177,7 @@ async function sendEmailNotifications(
   
   const smtpUser = process.env.SMTP_USER || "controlfinancierosaas@gmail.com";
   const smtpPass = process.env.SMTP_PASS || "bjed epzg boco cwsl";
-  const driveFolderUrl = "https://drive.google.com/drive/folders/1G7ehR-3SQ5Oo9UYUoqKEBT9CSoC2lMPx";
+  const driveFolderUrl = "https://drive.google.com/drive/folders/1EUuaVuTMwv6Uitj57MZkF0t-UysqO0R_";
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
