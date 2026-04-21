@@ -75,7 +75,9 @@ export default function IncidentDetailPage() {
       body: JSON.stringify(updateData),
     });
     if (res.ok) {
+      const updatedIncident = await res.json();
       alert("Incidencia actualizada correctamente");
+      setIncident(Array.isArray(updatedIncident) ? updatedIncident[0] : updatedIncident);
       if (newFiles.length > 0) {
         setNewFiles([]);
       }

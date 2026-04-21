@@ -14,17 +14,25 @@ export async function GET() {
     const estatusList = ["Activa", "En Evaluación", "En Ejecución", "Asignada", "Pospuesta", "Descartada", "Resuelta", "Archivada"];
     
     for (const estatus of estatusList) {
+    const promises = estatusList.map(async (estatus) => {
       const res = await fetch(
         `${supabaseUrl}/rest/v1/incidencias?estatus=eq.${encodeURIComponent(estatus)}&select=id`,
         {
           headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
         }
+        { headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` } }
       );
       if (res.ok) {
         const data = await res.json();
         stats[estatus] = data.length;
+        return { estatus, count: data.length };
       }
     }
+      return { estatus, count: 0 };
+    });
+
+    const results = await Promise.all(promises);
+    results.forEach(r => stats[r.estatus] = r.count);
 
     const openRes = await fetch(
       `${supabaseUrl}/rest/v1/incidencias?estatus=in.(Activa,En%20Evaluación,En%20Ejecución,Asignada)&select=id`,

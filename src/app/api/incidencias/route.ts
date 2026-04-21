@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { uploadFileToDrive } from "@/lib/googleDrive";
+import nodemailer from "nodemailer";
 
 // Configuración para permitir archivos más grandes y mayor tiempo de ejecución en Vercel
 export const maxDuration = 60; // 60 segundos (requiere plan Pro, en Hobby será el máximo permitido de 10-15s)
