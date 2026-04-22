@@ -12,8 +12,8 @@ export default function InventarioPage() {
   const [saving, setSaving] = useState(false);
   
   const [tipoMov, setTipoMov] = useState<"Entrada" | "Salida">("Salida");
-  const [nuevoMov, setNuevoMov] = useState({ articulo_nombre: "", cantidad: 1, unidad: "Unidad", recibido_por: "", ubicacion_uso: "" });
-  const [nuevoArticulo, setNuevoArticulo] = useState({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 2 });
+  const [nuevoMov, setNuevoMov] = useState({ articulo_nombre: "", cantidad: 1, unidad: "Unidad", recibido_por: "", ubicacion_uso: "", observaciones: "" });
+  const [nuevoArticulo, setNuevoArticulo] = useState({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 1, descripcion: "", ubicacion_almacen: "Almacén PB" });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -27,31 +27,23 @@ export default function InventarioPage() {
       ]);
       const stockData = await resStock.json();
       const catData = await resCat.json();
-      
       setItems(Array.isArray(stockData) ? stockData : []);
       setCatalogo(Array.isArray(catData) ? catData : []);
-    } catch (e) {
-      setError("Error al conectar con la base de datos");
-    } finally { setLoading(false); }
+    } catch (e) { setError("Error de conexión"); }
+    finally { setLoading(false); }
   };
 
   const handleMovimiento = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError("");
     try {
       const res = await fetch("/api/admin/inventario", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...nuevoMov, tipo_movimiento: tipoMov }),
       });
-      if (res.ok) {
-        setShowMovModal(false);
-        fetchData();
-      } else {
-        const errData = await res.json();
-        setError(errData.error || "Error al registrar movimiento");
-      }
+      if (res.ok) { setShowMovModal(false); fetchData(); }
+      else { const err = await res.json(); setError(err.error || "Error al registrar"); }
     } catch (e) { setError("Error de red"); }
     finally { setSaving(false); }
   };
@@ -59,7 +51,6 @@ export default function InventarioPage() {
   const handleSaveArticulo = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError("");
     try {
       const method = nuevoArticulo.id ? "PATCH" : "POST";
       const res = await fetch("/api/admin/articulos", {
@@ -67,13 +58,10 @@ export default function InventarioPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nuevoArticulo),
       });
-      if (res.ok) {
-        setShowArticuloModal(false);
-        setNuevoArticulo({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 2 });
-        fetchData();
-      } else {
-        const errData = await res.json();
-        setError(errData.error || "Error al guardar artículo");
+      if (res.ok) { 
+        setShowArticuloModal(false); 
+        setNuevoArticulo({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 1, descripcion: "", ubicacion_almacen: "Almacén PB" }); 
+        fetchData(); 
       }
     } catch (e) { setError("Error de red"); }
     finally { setSaving(false); }
@@ -86,67 +74,32 @@ export default function InventarioPage() {
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">Inventario / Almacén</h1>
             <div className="flex gap-4 mt-2">
-              <button 
-                onClick={() => setView("stock")}
-                className={`text-xs font-black pb-1 border-b-2 transition-all uppercase tracking-widest ${view === 'stock' ? 'text-emerald-500 border-emerald-500' : 'text-neutral-500 border-transparent'}`}
-              >
-                STOCK ACTUAL
-              </button>
-              <button 
-                onClick={() => setView("catalogo")}
-                className={`text-xs font-black pb-1 border-b-2 transition-all uppercase tracking-widest ${view === 'catalogo' ? 'text-emerald-500 border-emerald-500' : 'text-neutral-500 border-transparent'}`}
-              >
-                CATÁLOGO / ARTÍCULOS
-              </button>
+              <button onClick={() => setView("stock")} className={`text-xs font-black pb-1 border-b-2 uppercase tracking-widest ${view === 'stock' ? 'text-emerald-500 border-emerald-500' : 'text-neutral-500 border-transparent'}`}>STOCK ACTUAL</button>
+              <button onClick={() => setView("catalogo")} className={`text-xs font-black pb-1 border-b-2 uppercase tracking-widest ${view === 'catalogo' ? 'text-emerald-500 border-emerald-500' : 'text-neutral-500 border-transparent'}`}>CATÁLOGO MAESTRO</button>
             </div>
           </div>
-          
           <div className="flex gap-3 w-full md:w-auto">
-            <button 
-              onClick={() => { setTipoMov("Entrada"); setShowMovModal(true); }}
-              className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs uppercase"
-            >
-              ⬆️ Entrada
-            </button>
-            <button 
-              onClick={() => { setTipoMov("Salida"); setShowMovModal(true); }}
-              className="flex-1 md:flex-none px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-xs uppercase"
-            >
-              ⬇️ Salida
-            </button>
-            <button 
-              onClick={() => { setNuevoArticulo({id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 2}); setShowArticuloModal(true); }}
-              className="flex-1 md:flex-none px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg font-bold text-xs uppercase"
-            >
-              ➕ Nuevo Artículo
-            </button>
+            <button onClick={() => { setTipoMov("Entrada"); setShowMovModal(true); }} className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs uppercase">⬆️ Entrada</button>
+            <button onClick={() => { setTipoMov("Salida"); setShowMovModal(true); }} className="flex-1 md:flex-none px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-xs uppercase">⬇️ Salida</button>
+            <button onClick={() => { setNuevoArticulo({id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 1, descripcion: "", ubicacion_almacen: "Almacén PB"}); setShowArticuloModal(true); }} className="flex-1 md:flex-none px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg font-bold text-xs uppercase">➕ Nuevo Artículo</button>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-900/30 border border-red-500 text-red-200 rounded-xl flex items-center justify-between">
-            <span>⚠️ {error}</span>
-            <button onClick={() => setError("")}>✕</button>
-          </div>
-        )}
+        {error && <div className="mb-6 p-4 bg-red-900/30 border border-red-500 text-red-200 rounded-xl">⚠️ {error}</div>}
 
         {view === "stock" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {items.map(it => (
               <div key={it.nombre} className="bg-neutral-800 border border-neutral-700 rounded-xl p-5 hover:border-emerald-500/30 transition-all">
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">{it.categoria}</span>
-                  <span className={`text-2xl font-black ${it.cantidad <= 1 ? 'text-red-500' : 'text-white'}`}>{it.cantidad}</span>
+                  <span className="text-[10px] text-neutral-500 font-bold uppercase">{it.categoria}</span>
+                  <span className={`text-2xl font-black ${it.cantidad <= 0 ? 'text-red-500' : it.cantidad <= 1 ? 'text-yellow-500' : 'text-white'}`}>{it.cantidad}</span>
                 </div>
                 <h3 className="text-white font-bold text-sm uppercase truncate mb-1">{it.nombre}</h3>
-                <p className="text-neutral-500 text-[10px] font-bold">{it.unidad}</p>
+                <p className="text-neutral-500 text-[10px] font-bold uppercase">{it.unidad}</p>
+                {it.cantidad <= 1 && <div className="mt-3 text-[9px] font-black text-red-400 uppercase tracking-tighter animate-pulse">⚠️ Reponer Stock</div>}
               </div>
             ))}
-            {items.length === 0 && !loading && (
-              <div className="col-span-full py-20 text-center bg-neutral-900 rounded-2xl border border-dashed border-neutral-700 text-neutral-500 italic font-medium">
-                El almacén está vacío. Registre entradas del catálogo para ver el stock.
-              </div>
-            )}
           </div>
         ) : (
           <div className="bg-neutral-800 border border-neutral-700 rounded-xl overflow-hidden shadow-2xl">
@@ -154,32 +107,25 @@ export default function InventarioPage() {
               <thead className="bg-neutral-700 text-neutral-300 uppercase text-[10px] font-black tracking-widest">
                 <tr>
                   <th className="p-4">Artículo</th>
-                  <th className="p-4">Categoría</th>
-                  <th className="p-4">Unidad</th>
+                  <th className="p-4">Ubicación</th>
+                  <th className="p-4">Stock Mín.</th>
                   <th className="p-4 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-700">
                 {catalogo.map(art => (
-                  <tr key={art.id} className="hover:bg-neutral-750 transition-colors">
-                    <td className="p-4 text-white font-bold uppercase">{art.nombre}</td>
-                    <td className="p-4 text-neutral-400 font-medium">{art.categoria}</td>
-                    <td className="p-4 text-neutral-400 font-medium">{art.unidad_medida}</td>
+                  <tr key={art.id} className="hover:bg-neutral-750">
+                    <td className="p-4">
+                      <div className="text-white font-bold uppercase">{art.nombre}</div>
+                      <div className="text-[10px] text-neutral-500 mt-1 italic">{art.descripcion || 'Sin descripción'}</div>
+                    </td>
+                    <td className="p-4 text-neutral-400 font-medium uppercase text-xs">{art.ubicacion_almacen}</td>
+                    <td className="p-4 text-neutral-400 font-medium">{art.stock_minimo} {art.unidad_medida}</td>
                     <td className="p-4 text-center">
-                      <button 
-                        onClick={() => { setNuevoArticulo(art); setShowArticuloModal(true); }}
-                        className="text-[10px] bg-neutral-700 px-3 py-1.5 rounded text-emerald-400 font-black uppercase hover:bg-neutral-600 transition-colors"
-                      >
-                        EDITAR
-                      </button>
+                      <button onClick={() => { setNuevoArticulo(art); setShowArticuloModal(true); }} className="text-[10px] bg-neutral-700 px-3 py-1.5 rounded text-emerald-400 font-black uppercase hover:bg-neutral-600 transition-colors">EDITAR</button>
                     </td>
                   </tr>
                 ))}
-                {catalogo.length === 0 && (
-                   <tr>
-                     <td colSpan={4} className="p-10 text-center text-neutral-500 italic">No hay artículos creados en el catálogo.</td>
-                   </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -188,22 +134,13 @@ export default function InventarioPage() {
 
       {/* MODAL MOVIMIENTO */}
       {showMovModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
           <div className="bg-neutral-800 border border-neutral-700 rounded-2xl p-8 w-full max-w-md shadow-2xl">
-            <h3 className={`text-xl font-bold mb-6 uppercase tracking-tighter ${tipoMov === 'Entrada' ? 'text-emerald-500' : 'text-red-500'}`}>
-              Registrar {tipoMov}
-            </h3>
+            <h3 className={`text-xl font-bold mb-6 uppercase ${tipoMov === 'Entrada' ? 'text-emerald-500' : 'text-red-500'}`}>Registrar {tipoMov}</h3>
             <form onSubmit={handleMovimiento} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Artículo del Catálogo</label>
-                <select 
-                  required 
-                  className="w-full bg-neutral-700 p-3 rounded-lg text-white font-bold"
-                  onChange={e => {
-                    const art = catalogo.find(c => c.nombre === e.target.value);
-                    setNuevoMov({...nuevoMov, articulo_nombre: e.target.value, unidad: art?.unidad_medida || 'Unidad'});
-                  }}
-                >
+                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Artículo</label>
+                <select required className="w-full bg-neutral-700 p-3 rounded-lg text-white font-bold" onChange={e => setNuevoMov({...nuevoMov, articulo_nombre: e.target.value})}>
                   <option value="">Seleccione...</option>
                   {catalogo.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
                 </select>
@@ -211,18 +148,20 @@ export default function InventarioPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Cantidad</label>
-                  <input type="number" required step="0.1" min="0.1" className="w-full bg-neutral-700 p-3 rounded-lg text-white" onChange={e => setNuevoMov({...nuevoMov, cantidad: parseFloat(e.target.value)})} />
+                  <input type="number" required step="1" min="1" className="w-full bg-neutral-700 p-3 rounded-lg text-white" onChange={e => setNuevoMov({...nuevoMov, cantidad: parseFloat(e.target.value)})} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">{tipoMov === 'Entrada' ? 'Origen' : 'Entregado a'}</label>
                   <input type="text" required className="w-full bg-neutral-700 p-3 rounded-lg text-white" onChange={e => setNuevoMov({...nuevoMov, recibido_por: e.target.value})} />
                 </div>
               </div>
+              <div>
+                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Observaciones</label>
+                <textarea rows={2} className="w-full bg-neutral-700 p-3 rounded-lg text-white text-xs" onChange={e => setNuevoMov({...nuevoMov, observaciones: e.target.value})} />
+              </div>
               <div className="flex gap-4 pt-4">
-                <button type="submit" disabled={saving} className={`flex-1 py-3 rounded-xl font-black text-white uppercase tracking-widest ${tipoMov === 'Entrada' ? 'bg-emerald-600' : 'bg-red-600'}`}>
-                  {saving ? '...' : 'Confirmar'}
-                </button>
-                <button type="button" onClick={() => setShowMovModal(false)} className="flex-1 bg-neutral-700 py-3 rounded-xl font-black text-white uppercase tracking-widest">Cancelar</button>
+                <button type="submit" disabled={saving} className={`flex-1 py-3 rounded-xl font-black text-white uppercase ${tipoMov === 'Entrada' ? 'bg-emerald-600' : 'bg-red-600'}`}>{saving ? '...' : 'Confirmar'}</button>
+                <button type="button" onClick={() => setShowMovModal(false)} className="flex-1 bg-neutral-700 py-3 rounded-xl font-black text-white uppercase">Cancelar</button>
               </div>
             </form>
           </div>
@@ -231,34 +170,45 @@ export default function InventarioPage() {
 
       {/* MODAL ARTICULO */}
       {showArticuloModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-8 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-6 uppercase tracking-tighter">Configurar Artículo</h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-8 w-full max-w-lg shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-6 uppercase">Configurar Artículo en Catálogo</h3>
             <form onSubmit={handleSaveArticulo} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Nombre</label>
+                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Nombre Exacto</label>
                 <input type="text" required value={nuevoArticulo.nombre} className="w-full bg-neutral-800 p-3 rounded-lg text-white font-bold" onChange={e => setNuevoArticulo({...nuevoArticulo, nombre: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Descripción / Detalle</label>
+                <input type="text" value={nuevoArticulo.descripcion} className="w-full bg-neutral-800 p-3 rounded-lg text-white text-sm" placeholder="Ej: Led 12W 6500k Luz Blanca" onChange={e => setNuevoArticulo({...nuevoArticulo, descripcion: e.target.value})} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Categoría</label>
                   <select value={nuevoArticulo.categoria} className="w-full bg-neutral-800 p-3 rounded-lg text-white" onChange={e => setNuevoArticulo({...nuevoArticulo, categoria: e.target.value})}>
-                    <option value="Limpieza">Limpieza</option>
                     <option value="Iluminación">Iluminación</option>
+                    <option value="Limpieza">Limpieza</option>
                     <option value="Plomería">Plomería</option>
-                    <option value="Herramientas">Herramientas</option>
                     <option value="Otros">Otros</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Unidad (Paq/Gal/Und)</label>
-                  <input type="text" value={nuevoArticulo.unidad_medida} className="w-full bg-neutral-800 p-3 rounded-lg text-white" onChange={e => setNuevoArticulo({...nuevoArticulo, unidad_medida: e.target.value})} />
+                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Ubicación Física</label>
+                  <input type="text" value={nuevoArticulo.ubicacion_almacen} className="w-full bg-neutral-800 p-3 rounded-lg text-white" placeholder="Ej: Almacén PB" onChange={e => setNuevoArticulo({...nuevoArticulo, ubicacion_almacen: e.target.value})} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Unidad de Medida</label>
+                  <input type="text" value={nuevoArticulo.unidad_medida} className="w-full bg-neutral-800 p-3 rounded-lg text-white" placeholder="Ej: Galón" onChange={e => setNuevoArticulo({...nuevoArticulo, unidad_medida: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Stock Mínimo</label>
+                  <input type="number" value={nuevoArticulo.stock_minimo} className="w-full bg-neutral-800 p-3 rounded-lg text-white" onChange={e => setNuevoArticulo({...nuevoArticulo, stock_minimo: parseInt(e.target.value)})} />
                 </div>
               </div>
               <div className="flex gap-4 pt-4">
-                <button type="submit" disabled={saving} className="flex-1 bg-emerald-600 py-3 rounded-xl font-black text-white uppercase tracking-widest">
-                  {saving ? '...' : 'Guardar'}
-                </button>
+                <button type="submit" disabled={saving} className="flex-1 bg-emerald-600 py-3 rounded-xl font-black text-white uppercase tracking-widest">{saving ? '...' : 'Guardar en Catálogo'}</button>
                 <button type="button" onClick={() => setShowArticuloModal(false)} className="flex-1 bg-neutral-700 py-3 rounded-xl font-black text-white uppercase tracking-widest">Cancelar</button>
               </div>
             </form>
