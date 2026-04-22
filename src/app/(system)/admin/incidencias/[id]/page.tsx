@@ -18,6 +18,14 @@ export default function IncidentDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [incident, setIncident] = useState<any>(null);
   const [newFiles, setNewFiles] = useState<FileItem[]>([]);
+  const [proveedores, setProveedores] = useState<any[]>([]);
+  const [showEvalModal, setShowEvalModal] = useState(false);
+  const [evaluacion, setEvaluacion] = useState({
+    puntaje: 5,
+    criterio_resumido: "Resolución de Incidencia",
+    comentarios: "",
+    evaluado_por: ""
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -28,6 +36,11 @@ export default function IncidentDetailPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    fetch("/api/admin/proveedores")
+      .then(res => res.json())
+      .then(data => setProveedores(data))
+      .catch(() => {});
   }, [params.id]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,28 +100,47 @@ export default function IncidentDetailPage() {
     setSaving(false);
   };
 
-  const handleMarkResolved = async () => {
-    if (!confirm("¿Está seguro que desea marcar esta incidencia como resuelta? Se enviará un email al residente informándole.")) {
-      return;
-    }
+  const handleMarkResolved = () => {
+    setShowEvalModal(true);
+  };
+
+  const confirmResolve = async (withEvaluation: boolean) => {
     setSaving(true);
-    const res = await fetch(`/api/incidencias/${params.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        estatus: "Resuelta",
-        estado: "Cerrada",
-        fecha_resolucion: new Date().toISOString(),
-        enviar_email_resuelto: true,
-      }),
-    });
-    if (res.ok) {
-      alert("Incidencia marcada como resuelta. Se envió email al residente.");
+    try {
+      // 1. Marcar como resuelta
+      const res = await fetch(`/api/incidencias/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          estatus: "Resuelta",
+          estado: "Cerrada",
+          fecha_resolucion: new Date().toISOString(),
+          enviar_email_resuelto: true,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Error al marcar como resuelta");
+
+      // 2. Guardar evaluación si se proporcionó y hay un proveedor asignado
+      if (withEvaluation && incident.proveedor_id) {
+        await fetch(`/api/admin/proveedores/${incident.proveedor_id}/evaluaciones`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...evaluacion,
+            criterio_resumido: `Incidencia ${params.id?.toString().slice(0,8)}: ${evaluacion.criterio_resumido}`
+          }),
+        });
+      }
+
+      alert("Incidencia marcada como resuelta correctamente.");
       router.push("/admin/incidencias");
-    } else {
-      alert("Error al marcar como resuelta");
+    } catch (error) {
+      alert("Error en el proceso de resolución");
+    } finally {
+      setSaving(false);
+      setShowEvalModal(false);
     }
-    setSaving(false);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -223,12 +255,23 @@ export default function IncidentDetailPage() {
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Proveedor Asignado</label>
-              <input
-                value={incident.proveedor_asignado || ""}
-                onChange={e => setIncident({...incident, proveedor_asignado: e.target.value})}
-                placeholder="Nombre del proveedor"
-                className="w-full bg-neutral-700 p-2 rounded"
-              />
+              <select
+                value={incident.proveedor_id || ""}
+                onChange={e => {
+                  const p = proveedores.find(x => x.id === e.target.value);
+                  setIncident({
+                    ...incident, 
+                    proveedor_id: e.target.value || null,
+                    proveedor_asignado: p ? p.nombre : ""
+                  });
+                }}
+                className="w-full bg-neutral-700 p-2 rounded text-white"
+              >
+                <option value="">Sin asignar</option>
+                {proveedores.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre} ({p.categoria})</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Fecha de Asignación</label>
@@ -368,6 +411,104 @@ export default function IncidentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Evaluación al Resolver */}
+      {showEvalModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm text-white">
+          <div className="bg-neutral-800 border border-neutral-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-bold mb-2">Cerrar y Evaluar</h3>
+            <p className="text-neutral-400 text-sm mb-6">
+              ¿Deseas calificar el trabajo realizado por <b>{incident.proveedor_asignado || "el proveedor"}</b>?
+            </p>
+
+            {incident.proveedor_id ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-2">Puntaje</label>
+                  <div className="flex gap-2 text-2xl">
+                    {[1, 2, 3, 4, 5].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setEvaluacion({ ...evaluacion, puntaje: num })}
+                        className="focus:outline-none transition-transform active:scale-90"
+                      >
+                        {num <= evaluacion.puntaje ? "⭐" : "☆"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-2">Comentarios del trabajo</label>
+                  <textarea
+                    rows={3}
+                    value={evaluacion.comentarios}
+                    onChange={e => setEvaluacion({ ...evaluacion, comentarios: e.target.value })}
+                    className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    placeholder="Ej: El trabajo quedó impecable..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-400 mb-2">Evaluado por</label>
+                  <input
+                    type="text"
+                    value={evaluacion.evaluado_por}
+                    onChange={e => setEvaluacion({ ...evaluacion, evaluado_por: e.target.value })}
+                    className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    placeholder="Tu nombre o cargo"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2 pt-4">
+                  <button
+                    onClick={() => confirmResolve(true)}
+                    disabled={saving}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    {saving ? "Procesando..." : "Resolver con Evaluación"}
+                  </button>
+                  <button
+                    onClick={() => confirmResolve(false)}
+                    disabled={saving}
+                    className="w-full py-3 bg-neutral-700 hover:bg-neutral-600 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    Resolver sin Evaluar
+                  </button>
+                  <button
+                    onClick={() => setShowEvalModal(false)}
+                    className="w-full py-2 text-neutral-400 hover:text-white text-sm"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="p-3 bg-yellow-900/20 border border-yellow-700/50 rounded text-yellow-200 text-xs">
+                  ⚠️ No hay un proveedor vinculado estructuralmente a esta incidencia. Para evaluar, selecciona un proveedor en la sección de Administración y guarda los cambios primero.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => confirmResolve(false)}
+                    disabled={saving}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    {saving ? "Procesando..." : "Resolver Incidencia"}
+                  </button>
+                  <button
+                    onClick={() => setShowEvalModal(false)}
+                    className="w-full py-2 text-neutral-400 hover:text-white text-sm"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
