@@ -12,6 +12,7 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [edificioId, setEdificioId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     nombre: "",
     rif_cedula: "",
@@ -28,6 +29,14 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
   });
 
   useEffect(() => {
+    // Cargar sesión para obtener edificio_id
+    fetch("/api/auth/me")
+      .then(res => res.json())
+      .then(user => {
+        if (user && user.edificio_id) setEdificioId(user.edificio_id);
+      })
+      .catch(() => {});
+
     if (!isNew) {
       fetch(`/api/admin/proveedores/${id}`)
         .then(res => res.json())
@@ -55,10 +64,15 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
       const url = isNew ? "/api/admin/proveedores" : `/api/admin/proveedores/${id}`;
       const method = isNew ? "POST" : "PATCH";
 
+      const dataToSave = {
+        ...formData,
+        edificio_id: edificioId
+      };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSave),
       });
 
       if (!res.ok) throw new Error("Error al guardar");
