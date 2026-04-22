@@ -27,12 +27,18 @@ function IncidenciasContent() {
           setColumnasVisibles(config.columnas_visibles_incidencias);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Error loading config, using defaults", err);
+        setColumnasVisibles(["categoria", "sistema", "manual"]);
+      });
 
     // 2. Cargar incidencias
     fetch("/api/admin/incidencias")
       .then(res => res.json())
-      .then(data => setIncidents(data))
+      .then(data => {
+        if (Array.isArray(data)) setIncidents(data);
+        else setIncidents([]);
+      })
       .catch(() => setIncidents([]))
       .finally(() => setLoading(false));
   }, []);
