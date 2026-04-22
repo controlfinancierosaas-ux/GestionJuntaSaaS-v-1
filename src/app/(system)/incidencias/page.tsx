@@ -21,15 +21,6 @@ export default function IncidenciasPage() {
 
   useEffect(() => {
     // Cargar edificios para que el residente elija el suyo
-    fetch("/api/register") // Reutilizo o busco donde se listan
-      .then(res => res.json())
-      .then(data => {
-        // Si viene de una API que devuelve todos los edificios
-        if (Array.isArray(data)) setEdificios(data);
-      })
-      .catch(() => {});
-      
-    // Intento cargar de una API más específica si existe
     fetch("/api/admin/edificios/public") 
       .then(res => res.json())
       .then(data => {

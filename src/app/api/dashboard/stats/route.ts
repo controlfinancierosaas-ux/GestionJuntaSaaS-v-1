@@ -17,16 +17,23 @@ export async function GET() {
       try { edificioId = JSON.parse(userDataCookie.value).edificio_id; } catch(e){}
     }
 
-    // Traer TODAS las incidencias para procesar en memoria (Evita fallos por filtros vacíos)
-    // Intentamos filtrar por edificio pero si no trae nada, traemos todas
-    let url = `${supabaseUrl}/rest/v1/incidencias?select=estatus,edificio_id`;
-    
-    const res = await fetch(url, {
+    // Traer incidencias. Intentamos con edificio_id pero si falla (ej: columna no existe), traemos solo estatus
+    let res = await fetch(`${supabaseUrl}/rest/v1/incidencias?select=estatus,edificio_id`, {
       headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
       cache: 'no-store'
     });
 
-    const allIncidencias = await res.json();
+    let allIncidencias = await res.json();
+    
+    // Si falló por falta de columna edificio_id, reintentar solo con estatus
+    if (!Array.isArray(allIncidencias)) {
+      const retryRes = await fetch(`${supabaseUrl}/rest/v1/incidencias?select=estatus`, {
+        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+        cache: 'no-store'
+      });
+      allIncidencias = await retryRes.json();
+    }
+
     if (!Array.isArray(allIncidencias)) return NextResponse.json({});
 
     // Filtrar por edificio en memoria si es posible
