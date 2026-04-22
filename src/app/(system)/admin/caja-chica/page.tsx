@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 export default function CajaChicaPage() {
   const [movimientos, setMovimientos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nuevoMov, setNuevoMov] = useState({ 
@@ -29,17 +30,30 @@ export default function CajaChicaPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError("");
     try {
+      const data = {
+        ...nuevoMov,
+        monto_usd: parseFloat(nuevoMov.monto_usd.toString()) || 0,
+        monto_bs: parseFloat(nuevoMov.monto_bs.toString()) || 0,
+        tasa_bcv: parseFloat(nuevoMov.tasa_bcv.toString()) || 0
+      };
       const res = await fetch("/api/admin/caja-chica", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nuevoMov),
+        body: JSON.stringify(data),
       });
       if (res.ok) {
         setShowModal(false);
+        setNuevoMov({ concepto: "", tipo: "Egreso", monto_usd: 0, monto_bs: 0, tasa_bcv: 0, responsable: "", notas: "" });
         fetchData();
+      } else {
+        const errData = await res.json();
+        setError(errData.error || "Error al guardar el movimiento");
       }
-    } catch (e) {} finally { setSaving(false); }
+    } catch (e) {
+      setError("Error de conexión con el servidor");
+    } finally { setSaving(false); }
   };
 
   // Calcular balance total
@@ -58,6 +72,13 @@ export default function CajaChicaPage() {
             ➕ NUEVO MOVIMIENTO
           </button>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/30 border border-red-500 text-red-200 rounded-xl flex items-center justify-between">
+            <span>⚠️ {error}</span>
+            <button onClick={() => setError("")}>✕</button>
+          </div>
+        )}
 
         {/* Resumen de Saldo */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
