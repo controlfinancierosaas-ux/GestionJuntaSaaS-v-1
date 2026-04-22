@@ -68,37 +68,38 @@ export async function POST(request: Request) {
     const apiKey = supabaseServiceKey || supabaseKey;
     const authHeader = `Bearer ${apiKey}`;
 
-    // --- NUEVA LÓGICA DE NUMERACIÓN AMIGABLE ---
+    // --- NUEVA LÓGICA DE NUMERACIÓN AMIGABLE POR CATEGORÍA ---
     let numeroReporte = "";
     let numeroSecuencia = 0;
     try {
-      const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/get_and_increment_incidencia_number`, {
+      const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/get_friendly_incident_number`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "apikey": supabaseKey,
           "Authorization": authHeader,
         },
-        body: JSON.stringify({ p_edificio_id: data.edificio_id }),
+        body: JSON.stringify({ 
+          p_edificio_id: data.edificio_id,
+          p_categoria: data.tipo_incidencia 
+        }),
       });
       
       if (rpcRes.ok) {
         const rpcData = await rpcRes.json();
         const info = rpcData[0];
-        numeroSecuencia = info.siguiente_numero;
-        // Formato: PREFIJO-00001
-        numeroReporte = `${info.prefijo || 'INC'}-${String(numeroSecuencia).padStart(5, '0')}`;
+        numeroSecuencia = info.v_numero;
+        // Formato: PRE-00001
+        numeroReporte = `${info.v_prefijo || 'INC'}-${String(numeroSecuencia).padStart(5, '0')}`;
       } else {
         console.error("RPC Error:", await rpcRes.text());
-        // Fallback al formato antiguo si falla el RPC
-        const fR = new Date(Date.now() - 4 * 60 * 60 * 1000);
-        numeroReporte = `INC-${fR.getTime()}`;
+        numeroReporte = `INC-${Date.now()}`;
       }
     } catch (e) {
       console.error("Error generating friendly number:", e);
       numeroReporte = `INC-${Date.now()}`;
     }
-    // ------------------------------------------
+    // --------------------------------------------------------
 
     // URL de la carpeta de Drive donde se guardan los documentos
     const driveFolderUrl = "https://drive.google.com/drive/folders/1EUuaVuTMwv6Uitj57MZkF0t-UysqO0R_";
