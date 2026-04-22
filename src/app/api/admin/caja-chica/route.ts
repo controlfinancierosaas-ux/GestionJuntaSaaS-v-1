@@ -64,8 +64,9 @@ export async function POST(req: Request) {
     const payload: any = {
       concepto: body.concepto,
       tipo: body.tipo,
-      monto: parseFloat(body.monto_usd) || 0, // Mapeo crítico para evitar error 23502
+      monto: parseFloat(body.monto_usd) || 0,
       monto_usd: parseFloat(body.monto_usd) || 0,
+      saldo: parseFloat(body.monto_usd) || 0, // Cumplir con restricción not-null de columna saldo
       responsable: body.responsable,
       notas: body.notas || "",
       edificio_id,
