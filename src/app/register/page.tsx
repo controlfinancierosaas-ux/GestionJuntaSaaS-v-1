@@ -97,8 +97,8 @@ export default function RegisterPage() {
                   <input type="text" id="buildingName" name="buildingName" required className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="Torre Residencial Los Parques" />
                 </div>
                 <div>
-                  <label htmlFor="rif" className="block text-sm font-medium mb-2">RIF del Edificio *</label>
-                  <input type="text" id="rif" name="rif" required className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="J-12345678-1" />
+                  <label htmlFor="rif" className="block text-sm font-medium mb-2">RIF del Edificio</label>
+                  <input type="text" id="rif" name="rif" className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" placeholder="J-12345678-1" />
                 </div>
                 <div>
                   <label htmlFor="buildingType" className="block text-sm font-medium mb-2">Tipo de Edificio *</label>

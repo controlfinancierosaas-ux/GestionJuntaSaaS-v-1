@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       adminPassword,
     } = body;
 
-    if (!buildingName || !rif || !buildingType || !units || !address ||
+    if (!buildingName || !buildingType || !units || !address ||
         !adminName || !adminDocType || !adminDocNumber || !adminPhone || !adminEmail || !adminPassword) {
       console.log("Validation failed: missing fields");
       return NextResponse.json(

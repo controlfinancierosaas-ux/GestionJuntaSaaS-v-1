@@ -79,10 +79,9 @@ export default function ProveedoresPage() {
                 <thead className="bg-neutral-700">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Nombre</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Contacto</th>
+                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Tipo</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Categoría</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Teléfono</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Email</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Estatus</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300 text-center">Acciones</th>
                   </tr>
@@ -94,10 +93,15 @@ export default function ProveedoresPage() {
                         <div className="text-sm font-medium text-white">{s.nombre}</div>
                         <div className="text-xs text-neutral-500 font-mono">{s.rif_cedula || ""}</div>
                       </td>
-                      <td className="p-3 text-sm text-neutral-300">{s.persona_contacto || "-"}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          s.tipo_relacion === "Recurrente" ? "bg-blue-900 text-blue-200" : "bg-neutral-900 text-neutral-400"
+                        }`}>
+                          {s.tipo_relacion || "Eventual"}
+                        </span>
+                      </td>
                       <td className="p-3 text-sm text-neutral-300">{s.categoria || "-"}</td>
                       <td className="p-3 text-sm text-neutral-300">{s.telefono || "-"}</td>
-                      <td className="p-3 text-sm text-neutral-300">{s.email || "-"}</td>
                       <td className="p-3">
                         <span className={`px-2 py-1 rounded text-xs ${
                           s.estatus === "Activo" ? "bg-green-900 text-green-200" : "bg-red-900 text-red-200"
