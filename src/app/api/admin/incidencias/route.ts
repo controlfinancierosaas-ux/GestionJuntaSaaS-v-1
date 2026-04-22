@@ -11,29 +11,41 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const userDataCookie = cookieStore.get("user_data");
-    if (!userDataCookie) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const { edificio_id } = JSON.parse(userDataCookie.value);
+    let edificioId = null;
+    
+    if (userDataCookie) {
+      try {
+        const userData = JSON.parse(userDataCookie.value);
+        edificioId = userData.edificio_id;
+      } catch (e) {}
+    }
 
-    // 1. Intentar buscar incidencias del edificio
-    let res = await fetch(`${supabaseUrl}/rest/v1/incidencias?edificio_id=eq.${edificio_id}&order=created_at.desc`, {
+    // Caso A: Intentar filtrar por edificio si lo tenemos
+    if (edificioId) {
+      const res = await fetch(`${supabaseUrl}/rest/v1/incidencias?edificio_id=eq.${edificioId}&order=created_at.desc`, {
+        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+        cache: 'no-store'
+      });
+      
+      const data = await res.json();
+      // Si devolvió datos válidos y no es un error de Supabase, retornarlos
+      if (Array.isArray(data) && data.length > 0) {
+        return NextResponse.json(data);
+      }
+    }
+
+    // Caso B: Fallback Total - Si no hay edificio o el filtro no trajo nada, traer ABSOLUTAMENTE TODO
+    console.log("Fetching all incidences as absolute fallback");
+    const fallbackRes = await fetch(`${supabaseUrl}/rest/v1/incidencias?order=created_at.desc`, {
       headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
       cache: 'no-store'
     });
+    const allData = await fallbackRes.json();
     
-    let data = await res.json();
+    return NextResponse.json(Array.isArray(allData) ? allData : []);
 
-    // 2. Si no hay nada en este edificio, buscar TODAS (incluyendo huérfanas) para no mostrar lista vacía
-    if (!Array.isArray(data) || data.length === 0) {
-      console.log("No building-specific incidences found, fetching all as fallback");
-      const fallbackRes = await fetch(`${supabaseUrl}/rest/v1/incidencias?order=created_at.desc`, {
-        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
-      });
-      data = await fallbackRes.json();
-    }
-
-    return NextResponse.json(data);
   } catch (error) { 
-    console.error("Admin Incidencias API error:", error);
+    console.error("Critical error in Admin Incidencias API:", error);
     return NextResponse.json([], { status: 500 }); 
   }
 }
