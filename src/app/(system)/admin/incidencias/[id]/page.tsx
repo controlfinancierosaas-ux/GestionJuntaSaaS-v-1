@@ -163,7 +163,11 @@ export default function IncidentDetailPage() {
               ← Volver al Listado
             </button>
             <h1 className="text-2xl font-bold">Gestión de Incidencia</h1>
-            <p className="text-emerald-400 font-mono font-bold">Código: {incident.codigo_personalizado || incident.id}</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2">
+              <p className="text-emerald-400 font-mono font-bold text-sm">Categoría: {incident.codigo_personalizado || "N/A"}</p>
+              <p className="text-blue-400 font-mono text-sm">Sistema: {incident.numero_sistema || "N/A"}</p>
+              <p className="text-purple-400 font-mono text-sm">Manual: {incident.codigo_manual || "No asignado"}</p>
+            </div>
           </div>
           <div className="flex gap-3">
             <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium disabled:opacity-50">
@@ -299,6 +303,16 @@ export default function IncidentDetailPage() {
                 onChange={e => setIncident({...incident, monto_bs: Number(e.target.value)})}
                 placeholder="0.00"
                 className="w-full bg-neutral-700 p-2 rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1">Código Manual / Personalizado</label>
+              <input
+                type="text"
+                value={incident.codigo_manual || ""}
+                onChange={e => setIncident({...incident, codigo_manual: e.target.value.toUpperCase()})}
+                placeholder="Ej: ACTA-456"
+                className="w-full bg-neutral-700 p-2 rounded text-purple-300 font-mono"
               />
             </div>
           </div>

@@ -46,13 +46,18 @@ function IncidenciasContent() {
 
   const filtered = incidents.filter((inc: any) => {
     if (filter !== "Todos" && inc.estatus !== filter) return false;
+    
+    const searchLower = search.toLowerCase();
     if (search && !(
-      inc.reportado_por?.toLowerCase().includes(search.toLowerCase()) ||
-      inc.area_afectada?.toLowerCase().includes(search.toLowerCase()) ||
-      inc.unidad_codigo?.toLowerCase().includes(search.toLowerCase()) ||
-      inc.id?.toLowerCase().includes(search.toLowerCase()) ||
-      inc.codigo_personalizado?.toLowerCase().includes(search.toLowerCase())
+      inc.reportado_por?.toLowerCase().includes(searchLower) ||
+      inc.area_afectada?.toLowerCase().includes(searchLower) ||
+      inc.unidad_codigo?.toLowerCase().includes(searchLower) ||
+      inc.id?.toLowerCase().includes(searchLower) ||
+      inc.codigo_personalizado?.toLowerCase().includes(searchLower) ||
+      inc.numero_sistema?.toLowerCase().includes(searchLower) ||
+      inc.codigo_manual?.toLowerCase().includes(searchLower)
     )) return false;
+    
     if (proveedorFilter && inc.proveedor_asignado?.toLowerCase() !== proveedorFilter.toLowerCase()) return false;
     if (responsableFilter && inc.responsable_gestion?.toLowerCase() !== responsableFilter.toLowerCase()) return false;
     return true;
@@ -99,18 +104,11 @@ function IncidenciasContent() {
           </div>
         </div>
 
-        {openCount > 0 && (
-          <div className="bg-red-900/30 border border-red-500 rounded-lg p-4 mb-6">
-            <span className="text-red-400 font-semibold">{openCount}</span>
-            <span className="text-red-300"> incidencias activas requieren atención</span>
-          </div>
-        )}
-
         <div className="bg-neutral-800 rounded-lg p-4 mb-6 space-y-4">
           <div className="flex flex-wrap gap-4">
             <input
               type="text"
-              placeholder="Buscar por código, nombre, tipo, apartamento..."
+              placeholder="Buscar por código, sistema, manual, nombre, tipo..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="flex-1 min-w-[200px] px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none"
@@ -181,43 +179,43 @@ function IncidenciasContent() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-neutral-400">No hay incidencias que coincidan con los filtros</div>
         ) : (
-          <div className="bg-neutral-800 rounded-lg overflow-hidden">
+          <div className="bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-neutral-700">
                   <tr>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Código</th>
+                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Nº Sistema</th>
+                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Cód. Manual</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Fecha</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Tipo</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Reportado Por</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Unidad</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Responsable</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Estatus</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Proveedor</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300 text-center">Acciones</th>
+                    <th className="p-3 text-left text-sm font-medium text-neutral-300 text-center"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((inc: any) => (
-                    <tr key={inc.id} className="border-t border-neutral-700 hover:bg-neutral-750">
-                      <td className="p-3 text-sm font-mono text-emerald-400 font-bold">{inc.codigo_personalizado || inc.id?.slice(0, 8)}</td>
+                    <tr key={inc.id} className="border-t border-neutral-700 hover:bg-neutral-750 transition-colors">
+                      <td className="p-3 text-sm font-mono text-emerald-400 font-bold">{inc.codigo_personalizado || "-"}</td>
+                      <td className="p-3 text-sm font-mono text-blue-400 text-xs">{inc.numero_sistema || "-"}</td>
+                      <td className="p-3 text-sm font-mono text-purple-400 text-xs">{inc.codigo_manual || "-"}</td>
                       <td className="p-3 text-sm">{inc.created_at?.split("T")[0]}</td>
                       <td className="p-3 text-sm">{inc.area_afectada}</td>
-                      <td className="p-3 text-sm">{inc.reportado_por}</td>
                       <td className="p-3 text-sm text-neutral-400">{inc.unidad_codigo}</td>
-                      <td className="p-3 text-sm">{inc.responsable_gestion || "-"}</td>
                       <td className="p-3">
-                        <span className={`px-2 py-1 rounded text-xs ${getEstatusColor(inc.estatus || "Activa")}`}>
+                        <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${getEstatusColor(inc.estatus || "Activa")}`}>
                           {inc.estatus || "Activa"}
                         </span>
                       </td>
-                      <td className="p-3 text-sm">{inc.proveedor_asignado || "-"}</td>
+                      <td className="p-3 text-sm text-neutral-300">{inc.proveedor_asignado || "-"}</td>
                       <td className="p-3 text-center">
                         <button
                           onClick={() => router.push("/admin/incidencias/" + inc.id)}
-                          className="px-3 py-1 bg-neutral-700 hover:bg-neutral-600 text-blue-400 hover:text-blue-300 text-sm font-medium rounded transition-colors"
+                          className="px-3 py-1 bg-neutral-700 hover:bg-neutral-600 text-blue-400 text-xs font-bold rounded transition-colors"
                         >
-                          Editar
+                          GESTIONAR
                         </button>
                       </td>
                     </tr>

@@ -68,9 +68,19 @@ export async function POST(request: Request) {
     const apiKey = supabaseServiceKey || supabaseKey;
     const authHeader = `Bearer ${apiKey}`;
 
-    // --- NUEVA LÓGICA DE NUMERACIÓN AMIGABLE POR CATEGORÍA ---
+    // --- LÓGICA DE TRIPLE NUMERACIÓN ---
     let numeroReporte = "";
     let numeroSecuencia = 0;
+    
+    // 1. Generar Número de Sistema (yyyymmddhhmmss)
+    const now = new Date();
+    const numeroSistema = now.getFullYear().toString() + 
+                         String(now.getMonth() + 1).padStart(2, '0') + 
+                         String(now.getDate()).padStart(2, '0') + 
+                         String(now.getHours()).padStart(2, '0') + 
+                         String(now.getMinutes()).padStart(2, '0') + 
+                         String(now.getSeconds()).padStart(2, '0');
+
     try {
       const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/get_friendly_incident_number`, {
         method: "POST",
@@ -89,17 +99,15 @@ export async function POST(request: Request) {
         const rpcData = await rpcRes.json();
         const info = rpcData[0];
         numeroSecuencia = info.v_numero;
-        // Formato: PRE-00001
-        numeroReporte = `${info.v_prefijo || 'INC'}-${String(numeroSecuencia).padStart(5, '0')}`;
+        // 2. Generar Código por Categoría (Ej: PLO-000001)
+        numeroReporte = `${info.v_prefijo || 'INC'}-${String(numeroSecuencia).padStart(6, '0')}`;
       } else {
-        console.error("RPC Error:", await rpcRes.text());
-        numeroReporte = `INC-${Date.now()}`;
+        numeroReporte = `INC-${numeroSistema}`;
       }
     } catch (e) {
-      console.error("Error generating friendly number:", e);
-      numeroReporte = `INC-${Date.now()}`;
+      numeroReporte = `INC-${numeroSistema}`;
     }
-    // --------------------------------------------------------
+    // ------------------------------------
 
     // URL de la carpeta de Drive donde se guardan los documentos
     const driveFolderUrl = "https://drive.google.com/drive/folders/1EUuaVuTMwv6Uitj57MZkF0t-UysqO0R_";
@@ -189,7 +197,8 @@ export async function POST(request: Request) {
       estatus: 'Activa',
       documentos: data.documentos ? JSON.stringify({ nombres: documentosArray, carpeta: driveFolderUrl }) : '[]',
       numero_secuencia: numeroSecuencia,
-      codigo_personalizado: numeroReporte
+      codigo_personalizado: numeroReporte,
+      numero_sistema: numeroSistema
     };
 
     console.log("Inserting incident:", incidentData);
