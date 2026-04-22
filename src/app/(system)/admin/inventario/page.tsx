@@ -20,6 +20,7 @@ export default function InventarioPage() {
   const fetchData = async () => {
     setLoading(true);
     setError("");
+    console.log("Inventario Page: Fetching stock and catalog...");
     try {
       const [resStock, resCat] = await Promise.all([
         fetch("/api/admin/inventario"),
@@ -27,30 +28,46 @@ export default function InventarioPage() {
       ]);
       const stockData = await resStock.json();
       const catData = await resCat.json();
+      console.log("Inventario Page: Stock received:", stockData);
+      console.log("Inventario Page: Catalog received:", catData);
       setItems(Array.isArray(stockData) ? stockData : []);
       setCatalogo(Array.isArray(catData) ? catData : []);
-    } catch (e) { setError("Error de conexión"); }
-    finally { setLoading(false); }
+    } catch (e) { 
+      console.error("Inventario Page: Error fetching data:", e);
+      setError("Error de conexión"); 
+    } finally { setLoading(false); }
   };
 
   const handleMovimiento = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    console.log("Inventario Page: Registering movement...", { ...nuevoMov, tipo_movimiento: tipoMov });
     try {
       const res = await fetch("/api/admin/inventario", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...nuevoMov, tipo_movimiento: tipoMov }),
       });
-      if (res.ok) { setShowMovModal(false); fetchData(); }
-      else { const err = await res.json(); setError(err.error || "Error al registrar"); }
-    } catch (e) { setError("Error de red"); }
-    finally { setSaving(false); }
+      if (res.ok) { 
+        const result = await res.json();
+        console.log("Inventario Page: Movement registered successfully:", result);
+        setShowMovModal(false); 
+        fetchData(); 
+      } else { 
+        const err = await res.json(); 
+        console.error("Inventario Page: API Error (Movimiento):", err);
+        setError(err.error || "Error al registrar"); 
+      }
+    } catch (e) { 
+      console.error("Inventario Page: Connection error (Movimiento):", e);
+      setError("Error de red"); 
+    } finally { setSaving(false); }
   };
 
   const handleSaveArticulo = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    console.log("Inventario Page: Saving article...", nuevoArticulo);
     try {
       const method = nuevoArticulo.id ? "PATCH" : "POST";
       const res = await fetch("/api/admin/articulos", {
@@ -59,12 +76,20 @@ export default function InventarioPage() {
         body: JSON.stringify(nuevoArticulo),
       });
       if (res.ok) { 
+        const result = await res.json();
+        console.log("Inventario Page: Article saved successfully:", result);
         setShowArticuloModal(false); 
         setNuevoArticulo({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 1, descripcion: "", ubicacion_almacen: "Almacén PB" }); 
         fetchData(); 
+      } else {
+        const err = await res.json();
+        console.error("Inventario Page: API Error (Articulo):", err);
+        setError(err.error || "Error al guardar artículo");
       }
-    } catch (e) { setError("Error de red"); }
-    finally { setSaving(false); }
+    } catch (e) { 
+      console.error("Inventario Page: Connection error (Articulo):", e);
+      setError("Error de red"); 
+    } finally { setSaving(false); }
   };
 
   return (
@@ -176,16 +201,32 @@ export default function InventarioPage() {
             <form onSubmit={handleSaveArticulo} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Nombre Exacto</label>
-                <input type="text" required value={nuevoArticulo.nombre} className="w-full bg-neutral-800 p-3 rounded-lg text-white font-bold" onChange={e => setNuevoArticulo({...nuevoArticulo, nombre: e.target.value})} />
+                <input 
+                  type="text" 
+                  required 
+                  value={nuevoArticulo.nombre} 
+                  className="w-full bg-neutral-800 p-3 rounded-lg text-white font-bold" 
+                  onChange={e => setNuevoArticulo({...nuevoArticulo, nombre: e.target.value})} 
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Descripción / Detalle</label>
-                <input type="text" value={nuevoArticulo.descripcion} className="w-full bg-neutral-800 p-3 rounded-lg text-white text-sm" placeholder="Ej: Led 12W 6500k Luz Blanca" onChange={e => setNuevoArticulo({...nuevoArticulo, descripcion: e.target.value})} />
+                <input 
+                  type="text" 
+                  value={nuevoArticulo.descripcion || ""} 
+                  className="w-full bg-neutral-800 p-3 rounded-lg text-white text-sm" 
+                  placeholder="Ej: Led 12W 6500k Luz Blanca" 
+                  onChange={e => setNuevoArticulo({...nuevoArticulo, descripcion: e.target.value})} 
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Categoría</label>
-                  <select value={nuevoArticulo.categoria} className="w-full bg-neutral-800 p-3 rounded-lg text-white" onChange={e => setNuevoArticulo({...nuevoArticulo, categoria: e.target.value})}>
+                  <select 
+                    value={nuevoArticulo.categoria} 
+                    className="w-full bg-neutral-800 p-3 rounded-lg text-white" 
+                    onChange={e => setNuevoArticulo({...nuevoArticulo, categoria: e.target.value})}
+                  >
                     <option value="Iluminación">Iluminación</option>
                     <option value="Limpieza">Limpieza</option>
                     <option value="Plomería">Plomería</option>
@@ -194,17 +235,34 @@ export default function InventarioPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Ubicación Física</label>
-                  <input type="text" value={nuevoArticulo.ubicacion_almacen} className="w-full bg-neutral-800 p-3 rounded-lg text-white" placeholder="Ej: Almacén PB" onChange={e => setNuevoArticulo({...nuevoArticulo, ubicacion_almacen: e.target.value})} />
+                  <input 
+                    type="text" 
+                    value={nuevoArticulo.ubicacion_almacen || ""} 
+                    className="w-full bg-neutral-800 p-3 rounded-lg text-white" 
+                    placeholder="Ej: Almacén PB" 
+                    onChange={e => setNuevoArticulo({...nuevoArticulo, ubicacion_almacen: e.target.value})} 
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Unidad de Medida</label>
-                  <input type="text" value={nuevoArticulo.unidad_medida} className="w-full bg-neutral-800 p-3 rounded-lg text-white" placeholder="Ej: Galón" onChange={e => setNuevoArticulo({...nuevoArticulo, unidad_medida: e.target.value})} />
+                  <input 
+                    type="text" 
+                    value={nuevoArticulo.unidad_medida || ""} 
+                    className="w-full bg-neutral-800 p-3 rounded-lg text-white" 
+                    placeholder="Ej: Galón" 
+                    onChange={e => setNuevoArticulo({...nuevoArticulo, unidad_medida: e.target.value})} 
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Stock Mínimo</label>
-                  <input type="number" value={nuevoArticulo.stock_minimo} className="w-full bg-neutral-800 p-3 rounded-lg text-white" onChange={e => setNuevoArticulo({...nuevoArticulo, stock_minimo: parseInt(e.target.value)})} />
+                  <input 
+                    type="number" 
+                    value={nuevoArticulo.stock_minimo || 0} 
+                    className="w-full bg-neutral-800 p-3 rounded-lg text-white" 
+                    onChange={e => setNuevoArticulo({...nuevoArticulo, stock_minimo: parseInt(e.target.value) || 0})} 
+                  />
                 </div>
               </div>
               <div className="flex gap-4 pt-4">

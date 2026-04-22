@@ -21,16 +21,22 @@ export default function CajaChicaPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    console.log("Caja Chica Page: Fetching data...");
     try {
       const res = await fetch("/api/admin/caja-chica");
-      setMovimientos(await res.json());
-    } catch (e) {} finally { setLoading(false); }
+      const data = await res.json();
+      console.log("Caja Chica Page: Data received:", data);
+      setMovimientos(data);
+    } catch (e) {
+      console.error("Caja Chica Page: Error fetching data:", e);
+    } finally { setLoading(false); }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError("");
+    console.log("Caja Chica Page: Saving movement...", nuevoMov);
     try {
       const data = {
         ...nuevoMov,
@@ -44,14 +50,18 @@ export default function CajaChicaPage() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
+        const result = await res.json();
+        console.log("Caja Chica Page: Movement saved successfully:", result);
         setShowModal(false);
         setNuevoMov({ concepto: "", tipo: "Egreso", monto_usd: 0, monto_bs: 0, tasa_bcv: 0, responsable: "", notas: "" });
         fetchData();
       } else {
         const errData = await res.json();
+        console.error("Caja Chica Page: Error from API:", errData);
         setError(errData.error || "Error al guardar el movimiento");
       }
     } catch (e) {
+      console.error("Caja Chica Page: Connection error:", e);
       setError("Error de conexión con el servidor");
     } finally { setSaving(false); }
   };
@@ -157,28 +167,61 @@ export default function CajaChicaPage() {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Concepto</label>
-                <input type="text" required className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white" placeholder="Ej: Alquiler Salón de Fiestas..." onChange={e => setNuevoMov({...nuevoMov, concepto: e.target.value})} />
+                <input 
+                  type="text" 
+                  required 
+                  className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white" 
+                  placeholder="Ej: Alquiler Salón de Fiestas..." 
+                  value={nuevoMov.concepto}
+                  onChange={e => setNuevoMov({...nuevoMov, concepto: e.target.value})} 
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Monto USD</label>
-                  <input type="number" step="0.01" required className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white" onChange={e => setNuevoMov({...nuevoMov, monto_usd: parseFloat(e.target.value)})} />
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    required 
+                    className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white" 
+                    value={nuevoMov.monto_usd || ""}
+                    onChange={e => setNuevoMov({...nuevoMov, monto_usd: parseFloat(e.target.value) || 0})} 
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Monto Bs.</label>
-                  <input type="number" step="0.01" required className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white" onChange={e => setNuevoMov({...nuevoMov, monto_bs: parseFloat(e.target.value)})} />
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    required 
+                    className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white" 
+                    value={nuevoMov.monto_bs || ""}
+                    onChange={e => setNuevoMov({...nuevoMov, monto_bs: parseFloat(e.target.value) || 0})} 
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Responsable</label>
-                <input type="text" required className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white" placeholder="Quién registra o autoriza..." onChange={e => setNuevoMov({...nuevoMov, responsable: e.target.value})} />
+                <input 
+                  type="text" 
+                  required 
+                  className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white" 
+                  placeholder="Quién registra o autoriza..." 
+                  value={nuevoMov.responsable}
+                  onChange={e => setNuevoMov({...nuevoMov, responsable: e.target.value})} 
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Notas adicionales</label>
-                <textarea rows={2} className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white text-xs" onChange={e => setNuevoMov({...nuevoMov, notas: e.target.value})} />
+                <textarea 
+                  rows={2} 
+                  className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white text-xs" 
+                  value={nuevoMov.notas}
+                  onChange={e => setNuevoMov({...nuevoMov, notas: e.target.value})} 
+                />
               </div>
 
               <div className="flex gap-4 pt-4">
