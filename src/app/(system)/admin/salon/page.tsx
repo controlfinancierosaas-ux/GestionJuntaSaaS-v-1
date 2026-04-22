@@ -1,7 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 
 export default function SalonReservasPage() {
   const [reservas, setReservas] = useState<any[]>([]);
@@ -24,15 +22,21 @@ export default function SalonReservasPage() {
     solvente: true
   });
 
-  useEffect(() => { fetchReservas(); }, []);
+  useEffect(() => { 
+    fetchReservas(); 
+  }, []);
 
   const fetchReservas = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/reservas-salon");
-      setReservas(await res.json());
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+      if (!res.ok) throw new Error("Error al obtener reservas");
+      const data = await res.json();
+      setReservas(Array.isArray(data) ? data : []);
+    } catch (e: any) { 
+      console.error("Salon Page: Error fetching:", e);
+      setError("No se pudieron cargar las reservas.");
+    } finally { setLoading(false); }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -67,85 +71,94 @@ export default function SalonReservasPage() {
     } catch (e) { console.error(e); }
   };
 
-  const generarPDF = (reserva: any) => {
-    const doc = new jsPDF();
-    const margin = 20;
-    const width = doc.internal.pageSize.getWidth();
+  const generarPDF = async (reserva: any) => {
+    try {
+      // Importación dinámica para evitar errores de SSR
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+      
+      const doc = new jsPDF();
+      const margin = 20;
+      const width = doc.internal.pageSize.getWidth();
 
-    // Título
-    doc.setFontSize(16);
-    doc.text("SOLICITUD Y COMPROMISO DE USO DEL SALÓN DE FIESTAS", width / 2, 20, { align: "center" });
-    doc.setFontSize(12);
-    doc.text("Residencias Torrebela", width / 2, 28, { align: "center" });
-    doc.line(margin, 32, width - margin, 32);
+      // Título
+      doc.setFontSize(16);
+      doc.text("SOLICITUD Y COMPROMISO DE USO DEL SALÓN DE FIESTAS", width / 2, 20, { align: "center" });
+      doc.setFontSize(12);
+      doc.text("Residencias Torrebela", width / 2, 28, { align: "center" });
+      doc.line(margin, 32, width - margin, 32);
 
-    // I. DATOS DEL EVENTO
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("I. DATOS DEL EVENTO", margin, 40);
-    doc.setFont("helvetica", "normal");
-    
-    (doc as any).autoTable({
-      startY: 43,
-      margin: { left: margin },
-      body: [
-        ["Fecha de Solicitud:", new Date(reserva.fecha_solicitud || new Date()).toLocaleDateString()],
-        ["Fecha del Evento:", new Date(reserva.fecha_evento).toLocaleDateString()],
-        ["Motivo del Evento:", reserva.motivo_evento],
-        ["Horario de Uso:", `Desde ${reserva.horario_desde} Hasta ${reserva.horario_hasta}`],
-        ["Invitados:", reserva.invitados_estimados || "N/A"]
-      ],
-      theme: "grid",
-      styles: { fontSize: 9, cellPadding: 2 },
-      columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
-    });
+      // I. DATOS DEL EVENTO
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("I. DATOS DEL EVENTO", margin, 40);
+      doc.setFont("helvetica", "normal");
+      
+      (doc as any).autoTable({
+        startY: 43,
+        margin: { left: margin },
+        body: [
+          ["Fecha de Solicitud:", new Date(reserva.fecha_solicitud || reserva.created_at).toLocaleDateString()],
+          ["Fecha del Evento:", new Date(reserva.fecha_evento).toLocaleDateString()],
+          ["Motivo del Evento:", reserva.motivo_evento],
+          ["Horario de Uso:", `Desde ${reserva.horario_desde} Hasta ${reserva.horario_hasta}`],
+          ["Invitados:", reserva.invitados_estimados || "N/A"]
+        ],
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 2 },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+      });
 
-    // II. DATOS DEL PROPIETARIO
-    const finalY = (doc as any).lastAutoTable.finalY;
-    doc.setFont("helvetica", "bold");
-    doc.text("II. DATOS DEL PROPIETARIO RESPONSABLE", margin, finalY + 10);
-    
-    (doc as any).autoTable({
-      startY: finalY + 13,
-      margin: { left: margin },
-      body: [
-        ["Nombre Completo:", reserva.nombre_propietario],
-        ["Apartamento:", reserva.apartamento],
-        ["Teléfono:", reserva.telefono || "N/A"],
-        ["Correo Electrónico:", reserva.email]
-      ],
-      theme: "grid",
-      styles: { fontSize: 9, cellPadding: 2 },
-      columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
-    });
+      // II. DATOS DEL PROPIETARIO
+      const finalY = (doc as any).lastAutoTable.finalY;
+      doc.setFont("helvetica", "bold");
+      doc.text("II. DATOS DEL PROPIETARIO RESPONSABLE", margin, finalY + 10);
+      
+      (doc as any).autoTable({
+        startY: finalY + 13,
+        margin: { left: margin },
+        body: [
+          ["Nombre Completo:", reserva.nombre_propietario],
+          ["Apartamento:", reserva.apartamento],
+          ["Teléfono:", reserva.telefono || "N/A"],
+          ["Correo Electrónico:", reserva.email]
+        ],
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 2 },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+      });
 
-    // III. REGLAMENTO (Resumen)
-    const finalY2 = (doc as any).lastAutoTable.finalY;
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.text("III. COMPROMISO Y ACEPTACIÓN DEL REGLAMENTO", margin, finalY2 + 10);
-    doc.setFont("helvetica", "normal");
-    
-    const reglamento = [
-      "1. Horario Límite: El evento finalizará a la hora máxima permitida. Música hasta las 10pm (Dom-Jue) y 12pm (Vie-Sáb).",
-      "2. Responsabilidad: Asumo total responsabilidad por invitados y daños.",
-      "3. Daños: Me comprometo a cubrir cualquier daño al mobiliario o instalaciones.",
-      "4. Limpieza: El salón debe entregarse limpio en un máximo de 48 horas.",
-      "5. Depósito de Garantía: Se requiere un pago de $50 USD reintegrable tras inspección satisfactoria.",
-      "6. Gestión: El procesamiento está supeditado al pago de la Tarifa de Uso y Depósito."
-    ];
+      // III. REGLAMENTO
+      const finalY2 = (doc as any).lastAutoTable.finalY;
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text("III. COMPROMISO Y ACEPTACIÓN DEL REGLAMENTO", margin, finalY2 + 10);
+      doc.setFont("helvetica", "normal");
+      
+      const reglamento = [
+        "1. Horario Límite: El evento finalizará a la hora máxima permitida. Música hasta las 10pm (Dom-Jue) y 12pm (Vie-Sáb).",
+        "2. Responsabilidad: Asumo total responsabilidad por invitados y daños.",
+        "3. Daños: Me comprometo a cubrir cualquier daño al mobiliario o instalaciones.",
+        "4. Limpieza: El salón debe entregarse limpio en un máximo de 48 horas.",
+        "5. Depósito de Garantía: Se requiere un pago de $50 USD reintegrable tras inspección satisfactoria.",
+        "6. Gestión: El procesamiento está supeditado al pago de la Tarifa de Uso y Depósito."
+      ];
 
-    doc.text(reglamento, margin, finalY2 + 15, { maxWidth: width - (margin * 2), lineHeightFactor: 1.5 });
+      doc.text(reglamento, margin, finalY2 + 15, { maxWidth: width - (margin * 2), lineHeightFactor: 1.5 });
 
-    // FIRMAS
-    const footerY = doc.internal.pageSize.getHeight() - 40;
-    doc.line(margin, footerY, margin + 60, footerY);
-    doc.text("Firma del Propietario", margin, footerY + 5);
-    
-    doc.line(width - margin - 60, footerY, width - margin, footerY);
-    doc.text("Firma y Sello Junta", width - margin - 60, footerY + 5);
+      // FIRMAS
+      const footerY = doc.internal.pageSize.getHeight() - 40;
+      doc.line(margin, footerY, margin + 60, footerY);
+      doc.text("Firma del Propietario", margin, footerY + 5);
+      
+      doc.line(width - margin - 60, footerY, width - margin, footerY);
+      doc.text("Firma y Sello Junta", width - margin - 60, footerY + 5);
 
-    doc.save(`Solicitud_Salon_${reserva.apartamento}_${reserva.fecha_evento}.pdf`);
+      doc.save(`Solicitud_Salon_${reserva.apartamento}_${reserva.fecha_evento}.pdf`);
+    } catch (err) {
+      console.error("Error al generar PDF:", err);
+      alert("Error al generar el PDF. Por favor intente de nuevo.");
+    }
   };
 
   return (
