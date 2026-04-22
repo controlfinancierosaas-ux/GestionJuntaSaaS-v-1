@@ -92,7 +92,7 @@ export default function LoginPage() {
                     id="password" 
                     name="password" 
                     required 
-                    defaultValue="Aitana1999"
+                    defaultValue="Aitana1999."
                     className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none pr-12" 
                     placeholder="••••••••"
                   />
