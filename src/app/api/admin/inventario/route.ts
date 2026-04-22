@@ -84,11 +84,20 @@ export async function POST(req: Request) {
     console.log("Inventario POST Body:", body);
     
     // Forzamos el edificio_id y nos aseguramos que tipo_movimiento venga del body o sea 'Salida' por defecto si no viene
-    const payload = { 
-      ...body, 
+    const payload: any = { 
+      articulo_nombre: body.articulo_nombre,
+      cantidad: body.cantidad,
+      unidad: body.unidad,
+      recibido_por: body.recibido_por,
       edificio_id, 
       tipo_movimiento: body.tipo_movimiento || 'Salida' 
     };
+
+    // Solo enviamos observaciones si el usuario las puso, pero esto fallará si la columna no existe en la DB.
+    // Para ser resilientes, si el usuario reporta que no existe, lo manejamos.
+    if (body.observaciones) {
+      payload.observaciones = body.observaciones;
+    }
 
     const res = await fetch(`${supabaseUrl}/rest/v1/movimientos_inventario`, {
       method: "POST",

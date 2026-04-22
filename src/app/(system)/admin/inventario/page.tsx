@@ -5,6 +5,7 @@ export default function InventarioPage() {
   const [view, setView] = useState<"stock" | "catalogo">("stock");
   const [items, setItems] = useState<any[]>([]);
   const [catalogo, setCatalogo] = useState<any[]>([]);
+  const [proveedores, setProveedores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showMovModal, setShowMovModal] = useState(false);
@@ -12,26 +13,42 @@ export default function InventarioPage() {
   const [saving, setSaving] = useState(false);
   
   const [tipoMov, setTipoMov] = useState<"Entrada" | "Salida">("Salida");
-  const [nuevoMov, setNuevoMov] = useState({ articulo_nombre: "", cantidad: 1, unidad: "Unidad", recibido_por: "", ubicacion_uso: "", observaciones: "" });
-  const [nuevoArticulo, setNuevoArticulo] = useState({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 1, descripcion: "", ubicacion_almacen: "Almacén PB" });
+  const [vincularGasto, setVincularGasto] = useState(false);
+  const [nuevoMov, setNuevoMov] = useState({ 
+    articulo_nombre: "", 
+    cantidad: 1, 
+    unidad: "Unidad", 
+    recibido_por: "", 
+    ubicacion_uso: "", 
+    observaciones: "",
+    categoria: "",
+    // Campos para gasto si aplica
+    proveedor_id: "",
+    numero_comprobante: "",
+    monto_usd: 0,
+    monto_bs: 0,
+    fecha_factura: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
     setError("");
-    console.log("Inventario Page: Fetching stock and catalog...");
+    console.log("Inventario Page: Fetching stock, catalog and providers...");
     try {
-      const [resStock, resCat] = await Promise.all([
+      const [resStock, resCat, resProv] = await Promise.all([
         fetch("/api/admin/inventario"),
-        fetch("/api/admin/articulos")
+        fetch("/api/admin/articulos"),
+        fetch("/api/admin/proveedores")
       ]);
       const stockData = await resStock.json();
       const catData = await resCat.json();
-      console.log("Inventario Page: Stock received:", stockData);
-      console.log("Inventario Page: Catalog received:", catData);
+      const provData = await resProv.json();
+      console.log("Inventario Page: Data received", { stockData, catData, provData });
       setItems(Array.isArray(stockData) ? stockData : []);
       setCatalogo(Array.isArray(catData) ? catData : []);
+      setProveedores(Array.isArray(provData) ? provData : []);
     } catch (e) { 
       console.error("Inventario Page: Error fetching data:", e);
       setError("Error de conexión"); 
@@ -41,25 +58,65 @@ export default function InventarioPage() {
   const handleMovimiento = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    console.log("Inventario Page: Registering movement...", { ...nuevoMov, tipo_movimiento: tipoMov });
+    
     try {
-      const res = await fetch("/api/admin/inventario", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...nuevoMov, tipo_movimiento: tipoMov }),
-      });
-      if (res.ok) { 
-        const result = await res.json();
-        console.log("Inventario Page: Movement registered successfully:", result);
-        setShowMovModal(false); 
-        fetchData(); 
-      } else { 
-        const err = await res.json(); 
-        console.error("Inventario Page: API Error (Movimiento):", err);
-        setError(err.error || "Error al registrar"); 
+      if (tipoMov === "Entrada" && vincularGasto) {
+        // Lógica de Vincular a Gasto
+        console.log("Inventario Page: Registrando entrada vinculada a Gasto...");
+        const gastoPayload = {
+          proveedor_id: nuevoMov.proveedor_id,
+          numero_comprobante: nuevoMov.numero_comprobante,
+          monto_usd: nuevoMov.monto_usd,
+          monto_bs: nuevoMov.monto_bs,
+          fecha_factura: nuevoMov.fecha_factura,
+          categoria_gasto: "Insumos",
+          concepto_descripcion: `Compra de ${nuevoMov.articulo_nombre} (${nuevoMov.cantidad} ${nuevoMov.unidad})`,
+          items: [{
+            articulo_nombre: nuevoMov.articulo_nombre,
+            cantidad: nuevoMov.cantidad,
+            unidad: nuevoMov.unidad,
+            tipo_movimiento: "Entrada",
+            recibido_por: nuevoMov.recibido_por,
+            observaciones: nuevoMov.observaciones,
+            categoria: nuevoMov.categoria
+          }]
+        };
+
+        const res = await fetch("/api/admin/gastos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(gastoPayload),
+        });
+
+        if (res.ok) {
+          console.log("Inventario Page: Gasto e Inventario registrados con éxito");
+          setShowMovModal(false);
+          fetchData();
+        } else {
+          const err = await res.json();
+          setError(err.error?.message || "Error al registrar gasto/inventario");
+        }
+      } else {
+        // Lógica normal de Inventario
+        console.log("Inventario Page: Registering movement...", { ...nuevoMov, tipo_movimiento: tipoMov });
+        const res = await fetch("/api/admin/inventario", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...nuevoMov, tipo_movimiento: tipoMov }),
+        });
+        if (res.ok) { 
+          const result = await res.json();
+          console.log("Inventario Page: Movement registered successfully:", result);
+          setShowMovModal(false); 
+          fetchData(); 
+        } else { 
+          const err = await res.json(); 
+          console.error("Inventario Page: API Error (Movimiento):", err);
+          setError(err.error || "Error al registrar"); 
+        }
       }
     } catch (e) { 
-      console.error("Inventario Page: Connection error (Movimiento):", e);
+      console.error("Inventario Page: Connection error:", e);
       setError("Error de red"); 
     } finally { setSaving(false); }
   };
@@ -160,16 +217,95 @@ export default function InventarioPage() {
       {/* MODAL MOVIMIENTO */}
       {showMovModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-neutral-800 border border-neutral-700 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+          <div className="bg-neutral-800 border border-neutral-700 rounded-2xl p-8 w-full max-w-md shadow-2xl my-auto">
             <h3 className={`text-xl font-bold mb-6 uppercase ${tipoMov === 'Entrada' ? 'text-emerald-500' : 'text-red-500'}`}>Registrar {tipoMov}</h3>
             <form onSubmit={handleMovimiento} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Artículo</label>
-                <select required className="w-full bg-neutral-700 p-3 rounded-lg text-white font-bold" onChange={e => setNuevoMov({...nuevoMov, articulo_nombre: e.target.value})}>
+                <select 
+                  required 
+                  className="w-full bg-neutral-700 p-3 rounded-lg text-white font-bold" 
+                  onChange={e => {
+                    const art = catalogo.find(c => c.nombre === e.target.value);
+                    setNuevoMov({...nuevoMov, articulo_nombre: e.target.value, unidad: art?.unidad_medida || 'Unidad', categoria: art?.categoria || 'Otros'});
+                  }}
+                >
                   <option value="">Seleccione...</option>
                   {catalogo.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
                 </select>
               </div>
+
+              {tipoMov === 'Entrada' && (
+                <div className="flex items-center gap-2 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-xl">
+                  <input 
+                    type="checkbox" 
+                    id="vincular" 
+                    checked={vincularGasto} 
+                    onChange={e => setVincularGasto(e.target.checked)}
+                    className="w-4 h-4 accent-emerald-500"
+                  />
+                  <label htmlFor="vincular" className="text-xs font-bold text-emerald-400 uppercase cursor-pointer">Vincular a Gasto / Factura</label>
+                </div>
+              )}
+
+              {vincularGasto && tipoMov === 'Entrada' && (
+                <div className="space-y-4 p-4 bg-neutral-900/50 rounded-xl border border-neutral-700">
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Proveedor</label>
+                    <select 
+                      required={vincularGasto}
+                      className="w-full bg-neutral-700 p-2 rounded-lg text-white text-xs font-bold"
+                      onChange={e => setNuevoMov({...nuevoMov, proveedor_id: e.target.value})}
+                    >
+                      <option value="">Seleccione Proveedor...</option>
+                      {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Nro Factura</label>
+                      <input 
+                        type="text" 
+                        required={vincularGasto}
+                        className="w-full bg-neutral-700 p-2 rounded-lg text-white text-xs"
+                        onChange={e => setNuevoMov({...nuevoMov, numero_comprobante: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Fecha</label>
+                      <input 
+                        type="date" 
+                        required={vincularGasto}
+                        value={nuevoMov.fecha_factura}
+                        className="w-full bg-neutral-700 p-2 rounded-lg text-white text-xs"
+                        onChange={e => setNuevoMov({...nuevoMov, fecha_factura: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Monto USD</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        required={vincularGasto}
+                        className="w-full bg-neutral-700 p-2 rounded-lg text-white text-xs"
+                        onChange={e => setNuevoMov({...nuevoMov, monto_usd: parseFloat(e.target.value)})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Monto Bs.</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="w-full bg-neutral-700 p-2 rounded-lg text-white text-xs"
+                        onChange={e => setNuevoMov({...nuevoMov, monto_bs: parseFloat(e.target.value)})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Cantidad</label>
