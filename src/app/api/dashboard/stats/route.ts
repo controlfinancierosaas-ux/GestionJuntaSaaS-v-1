@@ -7,7 +7,7 @@ export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   
-  if (!supabaseUrl || !supabaseKey) return NextResponse.json({ error: "Config error" }, { status: 500 });
+  if (!supabaseUrl || !supabaseKey) return NextResponse.json({});
 
   try {
     const cookieStore = await cookies();
@@ -17,31 +17,24 @@ export async function GET() {
       try { edificioId = JSON.parse(userDataCookie.value).edificio_id; } catch(e){}
     }
 
-    // Traer incidencias. Intentamos con edificio_id pero si falla (ej: columna no existe), traemos solo estatus
-    let res = await fetch(`${supabaseUrl}/rest/v1/incidencias?select=estatus,edificio_id`, {
+    // Traer TODO para ser resilientes a cambios de esquema
+    const res = await fetch(`${supabaseUrl}/rest/v1/incidencias?select=*`, {
       headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
       cache: 'no-store'
     });
 
-    let allIncidencias = await res.json();
-    
-    // Si falló por falta de columna edificio_id, reintentar solo con estatus
+    const allIncidencias = await res.json();
     if (!Array.isArray(allIncidencias)) {
-      const retryRes = await fetch(`${supabaseUrl}/rest/v1/incidencias?select=estatus`, {
-        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
-        cache: 'no-store'
-      });
-      allIncidencias = await retryRes.json();
+      console.error("Dashboard error: Response is not array", allIncidencias);
+      return NextResponse.json({});
     }
 
-    if (!Array.isArray(allIncidencias)) return NextResponse.json({});
-
-    // Filtrar por edificio en memoria si es posible
+    // Filtrar en memoria por edificio si lo tenemos
     const myIncidencias = edificioId 
       ? allIncidencias.filter(i => i.edificio_id === edificioId)
       : [];
 
-    // Si mi edificio no tiene nada, usamos TODAS las incidencias como respaldo (fallback)
+    // Fallback: Si no hay nada para este edificio, usamos TODAS (históricas)
     const dataToProcess = myIncidencias.length > 0 ? myIncidencias : allIncidencias;
 
     const stats: Record<string, number> = {
@@ -52,7 +45,6 @@ export async function GET() {
     dataToProcess.forEach(inc => {
       const s = inc.estatus || "Activa";
       if (stats[s] !== undefined) stats[s]++;
-      else stats["Activa"]++; // Default
     });
 
     // Calcular abiertas
@@ -60,7 +52,7 @@ export async function GET() {
 
     return NextResponse.json(stats);
   } catch (error) {
-    console.error("Dashboard Stats Error:", error);
+    console.error("Dashboard Stats Critical Error:", error);
     return NextResponse.json({});
   }
 }
