@@ -71,9 +71,39 @@ export async function GET(request: Request) {
       }
     });
 
-    await enviarEmailReporte(html);
+    // --- OBTENER DESTINATARIOS DE LA BASE DE DATOS ---
+    const destinatarios = new Set<string>();
+    destinatarios.add("correojago@gmail.com"); // Siempre enviar copia al desarrollador/admin global
 
-    return NextResponse.json({ success: true, stats: { totalPendientes: casosPendientes.length } });
+    try {
+      // 1. Emails de administradores
+      const usersRes = await fetch(`${supabaseUrl}/rest/v1/usuarios?rol=eq.admin&select=email`, {
+        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+      });
+      if (usersRes.ok) {
+        const users = await usersRes.json();
+        users.forEach((u: any) => u.email && destinatarios.add(u.email));
+      }
+
+      // 2. Emails de la junta en configuración
+      const configRes = await fetch(`${supabaseUrl}/rest/v1/edificio_config?select=email_junta`, {
+        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+      });
+      if (configRes.ok) {
+        const configs = await configRes.json();
+        configs.forEach((c: any) => c.email_junta && destinatarios.add(c.email_junta));
+      }
+    } catch (e) {
+      console.error("Error al obtener destinatarios:", e);
+    }
+
+    await enviarEmailReporte(html, Array.from(destinatarios));
+
+    return NextResponse.json({ 
+      success: true, 
+      destinatarios: Array.from(destinatarios),
+      stats: { totalPendientes: casosPendientes.length } 
+    });
 
   } catch (error: any) {
     console.error("Error en reporte semanal:", error);
@@ -215,15 +245,20 @@ function generarReporteHTML({ grupos, inconsistencias, stats }: any) {
   return html;
 }
 
-async function enviarEmailReporte(html: string) {
+async function enviarEmailReporte(html: string, destinatarios: string[]) {
   const smtpUser = process.env.SMTP_USER || "controlfinancierosaas@gmail.com";
   const smtpPass = process.env.SMTP_PASS || "bjed epzg boco cwsl";
   const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: smtpUser, pass: smtpPass } });
   const fecha = new Date().toLocaleDateString('es-VE');
 
+  if (destinatarios.length === 0) {
+    console.warn("No hay destinatarios para el reporte semanal.");
+    return;
+  }
+
   await transporter.sendMail({
     from: `"GestiónCondo Control" <${smtpUser}>`,
-    to: "correojago@gmail.com",
+    to: destinatarios.join(", "),
     subject: `📊 CONTROL DE GESTIÓN: Reporte Semanal - ${fecha}`,
     html: html,
   });
