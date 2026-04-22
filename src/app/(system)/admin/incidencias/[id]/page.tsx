@@ -117,13 +117,13 @@ export default function IncidentDetailPage() {
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
-  if (loading) return <div className="min-h-screen bg-neutral-900 text-white p-8 text-center">Cargando...</div>;
-  if (!incident) return <div className="min-h-screen bg-neutral-900 text-white p-8 text-center">Incidencia no encontrada</div>;
+  if (loading) return <div className="text-white p-8 text-center">Cargando...</div>;
+  if (!incident) return <div className="text-white p-8 text-center">Incidencia no encontrada</div>;
 
   const documentosJunta = incident.documentos_junta || [];
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-white p-6">
+    <div className="text-white p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div>

@@ -112,8 +112,8 @@ export default function IncidenciasPage() {
 
   if (success) {
     return (
-      <main className="min-h-screen bg-neutral-900 text-white">
-        <div className="max-w-4xl mx-auto p-8 text-center pt-32">
+      <main className="text-white p-6">
+        <div className="max-w-4xl mx-auto text-center pt-8">
           <div className="text-6xl mb-4">✅</div>
           <h1 className="text-3xl font-bold mb-4">Incidencia Registrada</h1>
           {reportNumber && (
@@ -139,23 +139,8 @@ export default function IncidenciasPage() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-900 text-white">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-neutral-900/90 backdrop-blur-sm border-b border-neutral-800">
-        <nav className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-              <span className="text-lg font-bold">🏢</span>
-            </div>
-            <span className="text-xl font-semibold">GestiónCondo</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-neutral-400 hover:text-white transition-colors">Panel de Control</Link>
-          </div>
-        </nav>
-      </header>
-
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-3xl mx-auto">
+    <main className="text-white p-6">
+      <div className="max-w-3xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Reportar Incidencia</h1>
             <p className="text-neutral-400">
@@ -298,16 +283,6 @@ export default function IncidenciasPage() {
             </button>
           </form>
         </div>
-      </section>
-
-      <footer className="py-8 px-6 border-t border-neutral-800">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🏢</span>
-            <span className="text-neutral-500">GestiónCondo © 2026</span>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }

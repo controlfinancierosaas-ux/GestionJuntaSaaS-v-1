@@ -76,7 +76,7 @@ function IncidenciasContent() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-white p-6">
+    <div className="text-white p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Gestión de Incidencias</h1>
