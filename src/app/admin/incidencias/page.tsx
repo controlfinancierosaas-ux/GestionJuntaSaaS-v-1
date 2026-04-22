@@ -15,6 +15,8 @@ function IncidenciasContent() {
   const [proveedorFilter, setProveedorFilter] = useState("");
   const [responsableFilter, setResponsableFilter] = useState("");
 
+  const [sendingReport, setSendingReport] = useState(false);
+
   useEffect(() => {
     fetch("/api/admin/incidencias")
       .then(res => res.json())
@@ -22,6 +24,25 @@ function IncidenciasContent() {
       .catch(() => setIncidents([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleSendReport = async () => {
+    if (!confirm("¿Deseas enviar el reporte de gestión semanal a todos los administradores y junta?")) return;
+    
+    setSendingReport(true);
+    try {
+      const res = await fetch("/api/cron/reporte-semanal");
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ Reporte enviado exitosamente a: " + (data.destinatarios?.join(", ") || "destinatarios configurados"));
+      } else {
+        alert("❌ Error al enviar reporte: " + (data.error || "Error desconocido"));
+      }
+    } catch (error) {
+      alert("❌ Error de red al intentar enviar el reporte");
+    } finally {
+      setSendingReport(false);
+    }
+  };
 
   const filtered = incidents.filter((inc: any) => {
     if (filter !== "Todos" && inc.estatus !== filter) return false;
@@ -59,9 +80,22 @@ function IncidenciasContent() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Gestión de Incidencias</h1>
-          <button onClick={() => router.push("/dashboard")} className="text-neutral-400 hover:text-white">
-            ← Volver al Dashboard
-          </button>
+          <div className="flex gap-4 items-center">
+            <button
+              onClick={handleSendReport}
+              disabled={sendingReport}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                sendingReport 
+                  ? "bg-neutral-700 text-neutral-500 cursor-not-allowed" 
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white"
+              }`}
+            >
+              {sendingReport ? "Enviando..." : "📊 Enviar Reporte de Gestión"}
+            </button>
+            <button onClick={() => router.push("/dashboard")} className="text-neutral-400 hover:text-white">
+              ← Volver al Dashboard
+            </button>
+          </div>
         </div>
 
         {openCount > 0 && (
