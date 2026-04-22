@@ -29,6 +29,7 @@ export default function InventarioPage() {
     monto_bs: 0,
     fecha_factura: new Date().toISOString().split('T')[0]
   });
+  const [nuevoArticulo, setNuevoArticulo] = useState({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 1, descripcion: "", ubicacion_almacen: "Almacén PB" });
 
   useEffect(() => { fetchData(); }, []);
 
