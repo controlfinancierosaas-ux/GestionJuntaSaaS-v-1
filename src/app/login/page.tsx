@@ -109,25 +109,42 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="mt-8 bg-neutral-800/50 border border-neutral-700 rounded-xl p-6 text-center">
-            <h3 className="font-semibold mb-2">¿Quieres ver una demostración?</h3>
-            <p className="text-neutral-400 text-sm mb-4">
-              Explora el sistema con datos de prueba.
-            </p>
-            <button 
-              type="button"
-              onClick={() => {
-                const emailInput = document.getElementById("email") as HTMLInputElement;
-                const passInput = document.getElementById("password") as HTMLInputElement;
-                if (emailInput && passInput) {
-                  emailInput.value = "demo@gestioncondo.com";
-                  passInput.value = "demo123";
-                }
-              }}
-              className="text-emerald-400 hover:underline text-sm"
-            >
-              Usar datos de demo →
-            </button>
+            <div className="mt-8 bg-neutral-800/50 border border-neutral-700 rounded-xl p-6 text-center space-y-4">
+            <div>
+              <h3 className="font-semibold mb-2">Acceso Rápido</h3>
+              <button 
+                type="button"
+                onClick={() => {
+                  const emailInput = document.getElementById("email") as HTMLInputElement;
+                  const passInput = document.getElementById("password") as HTMLInputElement;
+                  if (emailInput && passInput) {
+                    emailInput.value = "correojago@gmail.com";
+                    passInput.value = "Aitana1999";
+                  }
+                }}
+                className="w-full py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors text-sm"
+              >
+                Ingresar como JAGO →
+              </button>
+            </div>
+
+            <div className="pt-4 border-t border-neutral-700/50">
+              <h3 className="font-semibold mb-2 text-sm text-neutral-400">¿Quieres ver una demostración?</h3>
+              <button 
+                type="button"
+                onClick={() => {
+                  const emailInput = document.getElementById("email") as HTMLInputElement;
+                  const passInput = document.getElementById("password") as HTMLInputElement;
+                  if (emailInput && passInput) {
+                    emailInput.value = "demo@gestioncondo.com";
+                    passInput.value = "demo123";
+                  }
+                }}
+                className="text-emerald-400 hover:underline text-xs"
+              >
+                Usar datos de demo →
+              </button>
+            </div>
           </div>
         </div>
       </section>
