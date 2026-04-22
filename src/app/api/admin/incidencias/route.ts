@@ -12,20 +12,22 @@ export async function GET() {
     if (!userDataCookie) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { edificio_id } = JSON.parse(userDataCookie.value);
 
-    // Filtrar por el edificio del administrador logueado
-    const res = await fetch(`${supabaseUrl}/rest/v1/incidencias?edificio_id=eq.${edificio_id}&order=created_at.desc`, {
+    // 1. Intentar buscar incidencias del edificio
+    let res = await fetch(`${supabaseUrl}/rest/v1/incidencias?edificio_id=eq.${edificio_id}&order=created_at.desc`, {
       headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
     });
     
-    if (!res.ok) {
-      // Si falla el filtro por edificio (ej: columna no existe aún), intentar traer todas como fallback temporal
+    let data = await res.json();
+
+    // 2. Si no hay nada en este edificio, buscar TODAS (incluyendo huérfanas) para no mostrar lista vacía
+    if (!Array.isArray(data) || data.length === 0) {
+      console.log("No building-specific incidences found, fetching all as fallback");
       const fallbackRes = await fetch(`${supabaseUrl}/rest/v1/incidencias?order=created_at.desc`, {
         headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
       });
-      return NextResponse.json(await fallbackRes.json());
+      data = await fallbackRes.json();
     }
 
-    const data = await res.json();
     return NextResponse.json(data);
   } catch (error) { 
     console.error("Admin Incidencias API error:", error);

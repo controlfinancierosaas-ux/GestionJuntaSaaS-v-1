@@ -36,10 +36,11 @@ export async function GET() {
     const results = await Promise.all(promises);
     results.forEach(r => stats[r.estatus] = r.count);
 
-    // --- FALLBACK TEMPORAL PARA INCIDENCIAS HUÉRFANAS ---
-    const totalCount = Object.values(stats).reduce((a, b) => a + b, 0);
-    if (totalCount === 0) {
-      // Si no hay nada en este edificio, intentar contar todas (como antes)
+    // --- FALLBACK MEJORADO PARA INCIDENCIAS EXISTENTES ---
+    const currentBuildingTotal = Object.values(stats).reduce((a, b) => a + b, 0);
+    
+    if (currentBuildingTotal === 0) {
+      // Si no hay nada en este edificio, contar las que NO tienen edificio (is null) o simplemente todas
       const fallbackPromises = estatusList.map(async (estatus) => {
         const res = await fetch(
           `${supabaseUrl}/rest/v1/incidencias?estatus=eq.${encodeURIComponent(estatus)}&select=id`,
@@ -54,18 +55,10 @@ export async function GET() {
       const fallbackResults = await Promise.all(fallbackPromises);
       fallbackResults.forEach(r => stats[r.estatus] = r.count);
     }
-    // --------------------------------------------------
 
-    const openRes = await fetch(
-      `${supabaseUrl}/rest/v1/incidencias?estatus=in.(Activa,En%20Evaluación,En%20Ejecución,Asignada)&edificio_id=eq.${edificio_id}&select=id`,
-      {
-        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
-      }
-    );
-    if (openRes.ok) {
-      const openData = await openRes.json();
-      stats["abiertas"] = openData.length;
-    }
+    // Calcular total de "abiertas" basándose en los stats ya calculados (sea por edificio o fallback)
+    const abiertasList = ["Activa", "En Evaluación", "En Ejecución", "Asignada"];
+    stats["abiertas"] = abiertasList.reduce((acc, est) => acc + (stats[est] || 0), 0);
 
     return NextResponse.json(stats);
   } catch (error) {
