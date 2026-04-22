@@ -76,7 +76,8 @@ export async function POST(req: Request) {
     const payload = {
       ...body,
       edificio_id,
-      unidad_codigo: body.apartamento, // Mapeo crítico para evitar error de constraint
+      propietario: body.nombre_propietario, // Mapeo para evitar error de constraint
+      unidad_codigo: body.apartamento, // Mapeo para evitar error de constraint
       estatus: 'Pendiente',
       fecha_solicitud: new Date().toISOString()
     };
