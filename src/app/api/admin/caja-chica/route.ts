@@ -25,17 +25,19 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const supabaseKeyStr = supabaseKey as string;
     const cookieStore = await cookies();
     const userDataCookie = cookieStore.get("user_data");
-    const { edificio_id } = JSON.parse(userDataCookie!.value);
+    if (!userDataCookie) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { edificio_id } = JSON.parse(userDataCookie.value);
 
     const body = await req.json();
     
     const res = await fetch(`${supabaseUrl}/rest/v1/caja_chica`, {
       method: "POST",
       headers: {
-        "apikey": supabaseKey,
-        "Authorization": `Bearer ${supabaseKey}`,
+        "apikey": supabaseKeyStr,
+        "Authorization": `Bearer ${supabaseKeyStr}`,
         "Content-Type": "application/json",
         "Prefer": "return=representation"
       },

@@ -55,17 +55,19 @@ export async function POST(req: Request) {
   const apiKey = supabaseServiceKey || supabaseKey;
 
   try {
+    const apiKeyStr = apiKey as string;
     const cookieStore = await cookies();
     const userDataCookie = cookieStore.get("user_data");
-    const { edificio_id } = JSON.parse(userDataCookie!.value);
+    if (!userDataCookie) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { edificio_id } = JSON.parse(userDataCookie.value);
 
     const body = await req.json(); // articulo_nombre, cantidad, unidad, tipo_movimiento: 'Salida', recibido_por
     
     const res = await fetch(`${supabaseUrl}/rest/v1/movimientos_inventario`, {
       method: "POST",
       headers: {
-        "apikey": supabaseKey,
-        "Authorization": `Bearer ${apiKey}`,
+        "apikey": apiKeyStr,
+        "Authorization": `Bearer ${apiKeyStr}`,
         "Content-Type": "application/json",
         "Prefer": "return=representation"
       },
