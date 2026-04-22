@@ -21,6 +21,7 @@ const MENU_GROUPS = [
       { label: "Control de Gastos", href: "/admin/gastos", icon: "💸" },
       { label: "Inventario / Almacén", href: "/admin/inventario", icon: "📦" },
       { label: "Caja Chica", href: "/admin/caja-chica", icon: "💰" },
+      { label: "Salón de Fiestas", href: "/admin/salon", icon: "🎉" },
     ]
   },
   {
