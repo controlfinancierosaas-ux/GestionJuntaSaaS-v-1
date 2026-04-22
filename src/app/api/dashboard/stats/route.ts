@@ -6,13 +6,16 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-...
+  
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json({ error: "Config error" }, { status: 500 });
+  }
+
+  try {
     const cookieStore = await cookies();
     const userDataCookie = cookieStore.get("user_data");
     if (!userDataCookie) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { edificio_id } = JSON.parse(userDataCookie.value);
-
-    console.log("Fetching stats for building:", edificio_id);
 
     const stats: Record<string, number> = {};
     const estatusList = ["Activa", "En Evaluación", "En Ejecución", "Asignada", "Pospuesta", "Descartada", "Resuelta", "Archivada"];
@@ -38,10 +41,8 @@ export async function GET() {
 
     // --- FALLBACK: Si no hay NADA en este edificio, mostrar TODAS las de la DB (huérfanas) ---
     const currentBuildingTotal = Object.values(stats).reduce((a, b) => a + b, 0);
-    console.log("Total found for current building:", currentBuildingTotal);
     
     if (currentBuildingTotal === 0) {
-      console.log("Fallback triggered: fetching all incidences");
       const fallbackPromises = estatusList.map(async (estatus) => {
         const res = await fetch(
           `${supabaseUrl}/rest/v1/incidencias?estatus=eq.${encodeURIComponent(estatus)}&select=id`,
@@ -60,7 +61,7 @@ export async function GET() {
       fallbackResults.forEach(r => stats[r.estatus] = r.count);
     }
 
-    // Calcular total de "abiertas" para los cuadros superiores
+    // Calcular total de "abiertas"
     const abiertasList = ["Activa", "En Evaluación", "En Ejecución", "Asignada"];
     stats["abiertas"] = abiertasList.reduce((acc, est) => acc + (stats[est] || 0), 0);
 
