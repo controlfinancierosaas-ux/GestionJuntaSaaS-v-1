@@ -8,6 +8,7 @@ const MENU_GROUPS = [
     title: "Administración",
     items: [
       { label: "Panel de Control", href: "/dashboard", icon: "📊" },
+      { label: "Gestión de Calidad", href: "/admin/evaluaciones", icon: "⭐" },
       { label: "Mi Edificio", href: "/admin/edificio", icon: "🏢" },
     ]
   },
