@@ -8,6 +8,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -85,15 +86,29 @@ export default function LoginPage() {
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium mb-2">Contraseña *</label>
-                <input 
-                  type="password" 
-                  id="password" 
-                  name="password" 
-                  required 
-                  defaultValue="Aitana1999"
-                  className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none" 
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    id="password" 
+                    name="password" 
+                    required 
+                    defaultValue="Aitana1999"
+                    className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none pr-12" 
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors p-1"
+                    title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                  >
+                    {showPassword ? (
+                      <span className="text-xl">👁️‍🗨️</span>
+                    ) : (
+                      <span className="text-xl">👁️</span>
+                    )}
+                  </button>
+                </div>
               </div>
               <button 
                 type="submit" 
