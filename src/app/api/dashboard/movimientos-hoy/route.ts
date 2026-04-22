@@ -29,7 +29,7 @@ export async function GET() {
     const gastosData = await resGastos.json();
 
     // Consolidar
-    const movimientos = [];
+    const movimientos: any[] = [];
 
     if (Array.isArray(cajaData)) {
       cajaData.forEach(m => {
