@@ -17,6 +17,26 @@ export default function IncidenciasPage() {
   const [reportNumber, setReportNumber] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileItem[]>([]);
+  const [edificios, setEdificios] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Cargar edificios para que el residente elija el suyo
+    fetch("/api/register") // Reutilizo o busco donde se listan
+      .then(res => res.json())
+      .then(data => {
+        // Si viene de una API que devuelve todos los edificios
+        if (Array.isArray(data)) setEdificios(data);
+      })
+      .catch(() => {});
+      
+    // Intento cargar de una API más específica si existe
+    fetch("/api/admin/edificios/public") 
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setEdificios(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -161,6 +181,21 @@ export default function IncidenciasPage() {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="bg-emerald-900/10 border border-emerald-500/30 p-6 rounded-xl mb-6">
+              <h2 className="text-xl font-semibold mb-4 text-emerald-400">Seleccione su Edificio</h2>
+              <div className="grid md:grid-cols-1 gap-4">
+                <div>
+                  <label htmlFor="edificio_id" className="block text-sm font-medium mb-2">Edificio / Conjunto Residencial *</label>
+                  <select id="edificio_id" name="edificio_id" required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 focus:outline-none text-white">
+                    <option value="">Selecciona tu edificio...</option>
+                    {edificios.map(ed => (
+                      <option key={ed.id} value={ed.id}>{ed.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="nombre_completo" className="block text-sm font-medium mb-2">Nombre Completo *</label>

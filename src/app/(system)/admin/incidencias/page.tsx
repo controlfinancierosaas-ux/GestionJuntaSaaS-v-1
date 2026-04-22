@@ -50,7 +50,8 @@ function IncidenciasContent() {
       inc.reportado_por?.toLowerCase().includes(search.toLowerCase()) ||
       inc.area_afectada?.toLowerCase().includes(search.toLowerCase()) ||
       inc.unidad_codigo?.toLowerCase().includes(search.toLowerCase()) ||
-      inc.id?.toLowerCase().includes(search.toLowerCase())
+      inc.id?.toLowerCase().includes(search.toLowerCase()) ||
+      inc.codigo_personalizado?.toLowerCase().includes(search.toLowerCase())
     )) return false;
     if (proveedorFilter && inc.proveedor_asignado?.toLowerCase() !== proveedorFilter.toLowerCase()) return false;
     if (responsableFilter && inc.responsable_gestion?.toLowerCase() !== responsableFilter.toLowerCase()) return false;
@@ -109,7 +110,7 @@ function IncidenciasContent() {
           <div className="flex flex-wrap gap-4">
             <input
               type="text"
-              placeholder="Buscar por nombre, tipo, apartamento..."
+              placeholder="Buscar por código, nombre, tipo, apartamento..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="flex-1 min-w-[200px] px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none"
@@ -185,7 +186,7 @@ function IncidenciasContent() {
               <table className="w-full">
                 <thead className="bg-neutral-700">
                   <tr>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">ID</th>
+                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Código</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Fecha</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Tipo</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Reportado Por</th>
@@ -193,14 +194,13 @@ function IncidenciasContent() {
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Responsable</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Estatus</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Proveedor</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Monto</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300"></th>
+                    <th className="p-3 text-left text-sm font-medium text-neutral-300 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((inc: any) => (
                     <tr key={inc.id} className="border-t border-neutral-700 hover:bg-neutral-750">
-                      <td className="p-3 text-sm font-mono">{inc.id?.slice(0, 8)}</td>
+                      <td className="p-3 text-sm font-mono text-emerald-400 font-bold">{inc.codigo_personalizado || inc.id?.slice(0, 8)}</td>
                       <td className="p-3 text-sm">{inc.created_at?.split("T")[0]}</td>
                       <td className="p-3 text-sm">{inc.area_afectada}</td>
                       <td className="p-3 text-sm">{inc.reportado_por}</td>
@@ -212,13 +212,12 @@ function IncidenciasContent() {
                         </span>
                       </td>
                       <td className="p-3 text-sm">{inc.proveedor_asignado || "-"}</td>
-                      <td className="p-3 text-sm">{inc.monto_bs ? `Bs. ${Number(inc.monto_bs).toLocaleString()}` : "-"}</td>
-                      <td className="p-3">
+                      <td className="p-3 text-center">
                         <button
                           onClick={() => router.push("/admin/incidencias/" + inc.id)}
-                          className="text-blue-400 hover:text-blue-300 text-sm"
+                          className="px-3 py-1 bg-neutral-700 hover:bg-neutral-600 text-blue-400 hover:text-blue-300 text-sm font-medium rounded transition-colors"
                         >
-                          Ver / Editar
+                          Editar
                         </button>
                       </td>
                     </tr>

@@ -48,11 +48,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("Body parsed successfully. Data keys:", Object.keys(body));
     
-    const data: IncidentData = body;
+    const data: IncidentData & { edificio_id: string } = body;
 
-    if (!data.nombre_completo || !data.apartamento || !data.telefono || !data.tipo_incidencia || !data.prioridad || !data.descripcion) {
+    if (!data.nombre_completo || !data.apartamento || !data.telefono || !data.tipo_incidencia || !data.prioridad || !data.descripcion || !data.edificio_id) {
       return NextResponse.json(
-        { error: "Todos los campos obligatorios deben ser completados" },
+        { error: "Todos los campos obligatorios deben ser completados (incluyendo el edificio)" },
         { status: 400 }
       );
     }
@@ -67,6 +67,38 @@ export async function POST(request: Request) {
 
     const apiKey = supabaseServiceKey || supabaseKey;
     const authHeader = `Bearer ${apiKey}`;
+
+    // --- NUEVA LÓGICA DE NUMERACIÓN AMIGABLE ---
+    let numeroReporte = "";
+    let numeroSecuencia = 0;
+    try {
+      const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/get_and_increment_incidencia_number`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": supabaseKey,
+          "Authorization": authHeader,
+        },
+        body: JSON.stringify({ p_edificio_id: data.edificio_id }),
+      });
+      
+      if (rpcRes.ok) {
+        const rpcData = await rpcRes.json();
+        const info = rpcData[0];
+        numeroSecuencia = info.siguiente_numero;
+        // Formato: PREFIJO-00001
+        numeroReporte = `${info.prefijo || 'INC'}-${String(numeroSecuencia).padStart(5, '0')}`;
+      } else {
+        console.error("RPC Error:", await rpcRes.text());
+        // Fallback al formato antiguo si falla el RPC
+        const fR = new Date(Date.now() - 4 * 60 * 60 * 1000);
+        numeroReporte = `INC-${fR.getTime()}`;
+      }
+    } catch (e) {
+      console.error("Error generating friendly number:", e);
+      numeroReporte = `INC-${Date.now()}`;
+    }
+    // ------------------------------------------
 
     // URL de la carpeta de Drive donde se guardan los documentos
     const driveFolderUrl = "https://drive.google.com/drive/folders/1EUuaVuTMwv6Uitj57MZkF0t-UysqO0R_";
@@ -141,6 +173,7 @@ export async function POST(request: Request) {
 
     const fechaEnvio = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     const incidentData = {
+      edificio_id: data.edificio_id,
       tipo_origen: 'Residente',
       area_afectada: data.tipo_incidencia,
       reportado_por: data.nombre_completo,
@@ -154,6 +187,8 @@ export async function POST(request: Request) {
       estado: 'Abierta',
       estatus: 'Activa',
       documentos: data.documentos ? JSON.stringify({ nombres: documentosArray, carpeta: driveFolderUrl }) : '[]',
+      numero_secuencia: numeroSecuencia,
+      codigo_personalizado: numeroReporte
     };
 
     console.log("Inserting incident:", incidentData);
@@ -177,16 +212,6 @@ export async function POST(request: Request) {
 
     const result = await res.json();
     console.log("Incident created:", result[0]?.id);
-
-    // Generar número de reporte - Venezuela UTC-4
-    const fechaReporte = new Date(Date.now() - 4 * 60 * 60 * 1000);
-    const anno = fechaReporte.getFullYear();
-    const mes = String(fechaReporte.getMonth() + 1).padStart(2, '0');
-    const dia = String(fechaReporte.getDate()).padStart(2, '0');
-    const hora = String(fechaReporte.getHours()).padStart(2, '0');
-    const minuto = String(fechaReporte.getMinutes()).padStart(2, '0');
-    const segundo = String(fechaReporte.getSeconds()).padStart(2, '0');
-    const numeroReporte = `INC-${anno}${mes}${dia}${hora}${minuto}${segundo}`;
 
     // Enviar notificaciones por email
     await sendEmailNotifications(data, numeroReporte, fechaEnvio, uploadedFiles);

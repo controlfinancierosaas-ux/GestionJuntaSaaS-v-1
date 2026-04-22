@@ -163,7 +163,7 @@ export default function IncidentDetailPage() {
               ← Volver al Listado
             </button>
             <h1 className="text-2xl font-bold">Gestión de Incidencia</h1>
-            <p className="text-neutral-400 text-sm">ID: {incident.id}</p>
+            <p className="text-emerald-400 font-mono font-bold">Código: {incident.codigo_personalizado || incident.id}</p>
           </div>
           <div className="flex gap-3">
             <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium disabled:opacity-50">
