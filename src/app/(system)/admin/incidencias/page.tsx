@@ -14,10 +14,22 @@ function IncidenciasContent() {
   const [search, setSearch] = useState("");
   const [proveedorFilter, setProveedorFilter] = useState("");
   const [responsableFilter, setResponsableFilter] = useState("");
+  const [columnasVisibles, setColumnasVisibles] = useState<string[]>(["categoria", "sistema", "manual"]);
 
   const [sendingReport, setSendingReport] = useState(false);
 
   useEffect(() => {
+    // 1. Cargar configuración para saber qué columnas mostrar
+    fetch("/api/admin/config")
+      .then(res => res.json())
+      .then(config => {
+        if (config && config.columnas_visibles_incidencias) {
+          setColumnasVisibles(config.columnas_visibles_incidencias);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Cargar incidencias
     fetch("/api/admin/incidencias")
       .then(res => res.json())
       .then(data => setIncidents(data))
@@ -63,10 +75,6 @@ function IncidenciasContent() {
     return true;
   });
 
-  const openCount = incidents.filter((i: any) => i.estatus === "Activa").length;
-  const uniqueProveedores = [...new Set(incidents.map((i: any) => i.proveedor_asignado).filter(Boolean))];
-  const uniqueResponsables = [...new Set(incidents.map((i: any) => i.responsable_gestion).filter(Boolean))];
-
   const getEstatusColor = (estatus: string) => {
     const colors: Record<string, string> = {
       "Activa": "bg-red-900 text-red-200",
@@ -80,6 +88,9 @@ function IncidenciasContent() {
     };
     return colors[estatus] || "bg-gray-700 text-gray-300";
   };
+
+  const uniqueProveedores = [...new Set(incidents.map((i: any) => i.proveedor_asignado).filter(Boolean))];
+  const uniqueResponsables = [...new Set(incidents.map((i: any) => i.responsable_gestion).filter(Boolean))];
 
   return (
     <div className="text-white p-6">
@@ -184,9 +195,9 @@ function IncidenciasContent() {
               <table className="w-full">
                 <thead className="bg-neutral-700">
                   <tr>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Código</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Nº Sistema</th>
-                    <th className="p-3 text-left text-sm font-medium text-neutral-300">Cód. Manual</th>
+                    {columnasVisibles.includes("categoria") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Código</th>}
+                    {columnasVisibles.includes("sistema") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Nº Sistema</th>}
+                    {columnasVisibles.includes("manual") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Cód. Manual</th>}
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Fecha</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Tipo</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Unidad</th>
@@ -198,9 +209,15 @@ function IncidenciasContent() {
                 <tbody>
                   {filtered.map((inc: any) => (
                     <tr key={inc.id} className="border-t border-neutral-700 hover:bg-neutral-750 transition-colors">
-                      <td className="p-3 text-sm font-mono text-emerald-400 font-bold">{inc.codigo_personalizado || "-"}</td>
-                      <td className="p-3 text-sm font-mono text-blue-400 text-xs">{inc.numero_sistema || "-"}</td>
-                      <td className="p-3 text-sm font-mono text-purple-400 text-xs">{inc.codigo_manual || "-"}</td>
+                      {columnasVisibles.includes("categoria") && (
+                        <td className="p-3 text-sm font-mono text-emerald-400 font-bold">{inc.codigo_personalizado || "-"}</td>
+                      )}
+                      {columnasVisibles.includes("sistema") && (
+                        <td className="p-3 text-sm font-mono text-blue-400 text-xs">{inc.numero_sistema || "-"}</td>
+                      )}
+                      {columnasVisibles.includes("manual") && (
+                        <td className="p-3 text-sm font-mono text-purple-400 text-xs">{inc.codigo_manual || "-"}</td>
+                      )}
                       <td className="p-3 text-sm">{inc.created_at?.split("T")[0]}</td>
                       <td className="p-3 text-sm">{inc.area_afectada}</td>
                       <td className="p-3 text-sm text-neutral-400">{inc.unidad_codigo}</td>

@@ -15,7 +15,23 @@ export async function GET() {
     const res = await fetch(`${supabaseUrl}/rest/v1/edificio_config?edificio_id=eq.${me.edificio_id}&select=*`, {
       headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
     });
-    const data = await res.json();
+    let data = await res.json();
+    
+    // Si no existe, crear una por defecto
+    if (!data || data.length === 0) {
+      const createRes = await fetch(`${supabaseUrl}/rest/v1/edificio_config`, {
+        method: "POST",
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify({ edificio_id: me.edificio_id }),
+      });
+      data = await createRes.json();
+    }
+
     return NextResponse.json(data[0] || null);
   } catch { return NextResponse.json(null, { status: 500 }); }
 }
