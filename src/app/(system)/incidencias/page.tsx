@@ -34,8 +34,9 @@ export default function IncidenciasPage() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setEdificios(data);
+        else setEdificios([]);
       })
-      .catch(() => {});
+      .catch(() => setEdificios([]));
   }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

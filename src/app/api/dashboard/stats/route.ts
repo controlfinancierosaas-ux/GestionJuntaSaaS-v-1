@@ -1,29 +1,29 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json({ error: "Config error" }, { status: 500 });
-  }
-
-  try {
+...
     const cookieStore = await cookies();
     const userDataCookie = cookieStore.get("user_data");
     if (!userDataCookie) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { edificio_id } = JSON.parse(userDataCookie.value);
 
+    console.log("Fetching stats for building:", edificio_id);
+
     const stats: Record<string, number> = {};
     const estatusList = ["Activa", "En Evaluación", "En Ejecución", "Asignada", "Pospuesta", "Descartada", "Resuelta", "Archivada"];
     
+    // 1. Intentar contar incidencias del edificio actual
     const promises = estatusList.map(async (estatus) => {
-      // Filtrar por estatus Y por edificio
       const res = await fetch(
         `${supabaseUrl}/rest/v1/incidencias?estatus=eq.${encodeURIComponent(estatus)}&edificio_id=eq.${edificio_id}&select=id`,
         {
           headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+          cache: 'no-store'
         }
       );
       if (res.ok) {
@@ -36,15 +36,19 @@ export async function GET() {
     const results = await Promise.all(promises);
     results.forEach(r => stats[r.estatus] = r.count);
 
-    // --- FALLBACK MEJORADO PARA INCIDENCIAS EXISTENTES ---
+    // --- FALLBACK: Si no hay NADA en este edificio, mostrar TODAS las de la DB (huérfanas) ---
     const currentBuildingTotal = Object.values(stats).reduce((a, b) => a + b, 0);
+    console.log("Total found for current building:", currentBuildingTotal);
     
     if (currentBuildingTotal === 0) {
-      // Si no hay nada en este edificio, contar las que NO tienen edificio (is null) o simplemente todas
+      console.log("Fallback triggered: fetching all incidences");
       const fallbackPromises = estatusList.map(async (estatus) => {
         const res = await fetch(
           `${supabaseUrl}/rest/v1/incidencias?estatus=eq.${encodeURIComponent(estatus)}&select=id`,
-          { headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` } }
+          { 
+            headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+            cache: 'no-store'
+          }
         );
         if (res.ok) {
           const data = await res.json();
@@ -56,7 +60,7 @@ export async function GET() {
       fallbackResults.forEach(r => stats[r.estatus] = r.count);
     }
 
-    // Calcular total de "abiertas" basándose en los stats ya calculados (sea por edificio o fallback)
+    // Calcular total de "abiertas" para los cuadros superiores
     const abiertasList = ["Activa", "En Evaluación", "En Ejecución", "Asignada"];
     stats["abiertas"] = abiertasList.reduce((acc, est) => acc + (stats[est] || 0), 0);
 

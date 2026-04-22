@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -15,6 +17,7 @@ export async function GET() {
     // 1. Intentar buscar incidencias del edificio
     let res = await fetch(`${supabaseUrl}/rest/v1/incidencias?edificio_id=eq.${edificio_id}&order=created_at.desc`, {
       headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+      cache: 'no-store'
     });
     
     let data = await res.json();
