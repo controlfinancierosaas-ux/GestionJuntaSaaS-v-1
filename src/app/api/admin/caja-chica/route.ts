@@ -60,17 +60,22 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("Caja Chica API: Body recibido:", body);
     
-    const payload = {
+    // Construimos el payload básico que sabemos que debe existir
+    const payload: any = {
       concepto: body.concepto,
       tipo: body.tipo,
       monto_usd: parseFloat(body.monto_usd) || 0,
-      monto_bs: parseFloat(body.monto_bs) || 0,
-      tasa_bcv: parseFloat(body.tasa_bcv) || 0,
       responsable: body.responsable,
       notas: body.notas || "",
       edificio_id,
       fecha: body.fecha || new Date().toISOString()
     };
+
+    // Solo agregamos estas si tienen valor, para intentar que no fallen si la columna no existe
+    // Aunque PGRST204 suele fallar si la columna no existe incluso si no se envía, 
+    // lo mejor es que el usuario las agregue a la DB.
+    if (body.monto_bs > 0) payload.monto_bs = parseFloat(body.monto_bs);
+    if (body.tasa_bcv > 0) payload.tasa_bcv = parseFloat(body.tasa_bcv);
     
     console.log("Caja Chica API: Enviando a Supabase:", payload);
 

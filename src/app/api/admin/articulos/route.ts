@@ -41,6 +41,19 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("Articulos POST Body:", body);
     
+    // Solo enviamos lo estrictamente necesario inicialmente para asegurar compatibilidad
+    const payload: any = {
+      nombre: body.nombre,
+      categoria: body.categoria || 'Otros',
+      unidad_medida: body.unidad_medida || 'Unidad',
+      stock_minimo: body.stock_minimo || 0,
+      edificio_id
+    };
+
+    // Agregar campos opcionales si vienen en el body (pero esto fallará si la columna no existe)
+    if (body.descripcion) payload.descripcion = body.descripcion;
+    if (body.ubicacion_almacen) payload.ubicacion_almacen = body.ubicacion_almacen;
+    
     const res = await fetch(`${supabaseUrl}/rest/v1/articulos_inventario`, {
       method: "POST",
       headers: {
@@ -49,7 +62,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         "Prefer": "return=representation"
       },
-      body: JSON.stringify({ ...body, edificio_id }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
