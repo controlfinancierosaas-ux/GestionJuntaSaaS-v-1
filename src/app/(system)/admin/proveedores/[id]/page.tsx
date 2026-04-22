@@ -95,7 +95,11 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
 
       const dataToSave = {
         ...formData,
-        edificio_id: edificioId
+        edificio_id: edificioId,
+        // Sanitizar campos numéricos
+        monto_canon_usd: formData.monto_canon_usd === "" ? null : parseFloat(formData.monto_canon_usd),
+        monto_canon_bs: formData.monto_canon_bs === "" ? null : parseFloat(formData.monto_canon_bs),
+        dia_pago: formData.dia_pago === "" ? null : parseInt(formData.dia_pago)
       };
 
       const res = await fetch(url, {
