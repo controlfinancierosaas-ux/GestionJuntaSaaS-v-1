@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!supabaseUrl || !supabaseKey) return NextResponse.json(null, { status: 500 });
   const { id } = await params;
 
@@ -17,7 +17,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   } catch { return NextResponse.json(null, { status: 500 }); }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!supabaseUrl || !supabaseKey) return NextResponse.json({ error: "Missing config" }, { status: 500 });
   const { id } = await params;
 
@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   } catch { return NextResponse.json({ error: "Server error" }, { status: 500 }); }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!supabaseUrl || !supabaseKey) return NextResponse.json({ error: "Missing config" }, { status: 500 });
   const { id } = await params;
 
