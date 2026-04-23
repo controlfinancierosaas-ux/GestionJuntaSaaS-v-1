@@ -47,19 +47,16 @@ export async function POST(req: Request) {
 
     if (!edificio_id) return NextResponse.json({ error: "Edificio no identificado" }, { status: 400 });
 
-    // Generar un número de reserva único para cumplir con la restricción UNIQUE
     const numeroReserva = `RS-${Date.now().toString().slice(-6)}`;
 
-    // MAPEO DEFINITIVO basado en las restricciones del usuario
+    // PAYLOAD LIMPIO: Solo columnas confirmadas
     const payload = {
       edificio_id,
-      numero: numeroReserva,             // Columna con UNIQUE constraint
-      propietario: body.nombre_propietario, // Columna obligatoria detectada
-      unidad_codigo: body.apartamento,     // Columna obligatoria detectada
-      tipo_evento: body.motivo_evento,     // Columna obligatoria detectada
-      monto: body.monto_canon || 0,        // Columna de monto detectada
-      
-      // Otros campos necesarios
+      numero: numeroReserva,
+      propietario: body.nombre_propietario,
+      unidad_codigo: body.apartamento,
+      tipo_evento: body.motivo_evento,
+      monto_canon: body.monto_canon || 0,
       email: body.email,
       telefono: body.telefono,
       fecha_evento: body.fecha_evento,
@@ -84,24 +81,22 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const err = await res.json();
-      console.error("Supabase Error:", err);
+      console.error("Error Supabase:", err);
       return NextResponse.json({ error: err.message }, { status: res.status });
     }
 
     const data = await res.json();
-    const createdReserva = data[0];
 
-    // Enviar Emails
+    // Emails
     const htmlEmail = `<div style="font-family:Arial;padding:20px;border:1px solid #eee;">
       <h2 style="color:#6366f1;">Solicitud Recibida: ${numeroReserva}</h2>
       <p>Hola <b>${body.nombre_propietario}</b>, recibimos tu solicitud para el <b>${body.fecha_evento}</b>.</p>
-      <p>Apto: ${body.apartamento} | Motivo: ${body.motivo_evento}</p>
     </div>`;
     
-    await sendEmail(body.email, `Reserva Recibida ${numeroReserva} - Torrebela`, htmlEmail);
-    await sendEmail("correojago@gmail.com", `NUEVA RESERVA ${numeroReserva}: ${body.apartamento}`, htmlEmail);
+    await sendEmail(body.email, `Reserva Recibida ${numeroReserva}`, htmlEmail);
+    await sendEmail("correojago@gmail.com", `NUEVA RESERVA ${numeroReserva}`, htmlEmail);
 
-    return NextResponse.json(createdReserva);
+    return NextResponse.json(data[0]);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -112,7 +107,6 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     const { id, estatus, monto_canon, apartamento } = body;
 
-    // 1. Actualizar estatus de la reserva
     const res = await fetch(`${supabaseUrl}/rest/v1/reservas_salon?id=eq.${id}`, {
       method: "PATCH",
       headers: {
@@ -127,19 +121,17 @@ export async function PATCH(req: Request) {
     if (res.ok && estatus === 'Pagada') {
       const cookieStore = await cookies();
       const { edificio_id } = JSON.parse(cookieStore.get("user_data")!.value);
-      
-      // 2. Registrar en Caja Chica VINCULANDO con reserva_id
       await fetch(`${supabaseUrl}/rest/v1/caja_chica`, {
         method: "POST",
         headers: { "apikey": supabaseKey as string, "Authorization": `Bearer ${supabaseKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          reserva_id: id, // Vínculo detectado en las restricciones
+          reserva_id: id,
           concepto: `Alquiler Salón - Apto ${apartamento}`,
           tipo: 'Ingreso',
           monto: monto_canon || 0,
           monto_usd: monto_canon || 0,
-          saldo: 0, // El saldo se maneja por DB o se enviará 0 para que no falle
-          responsable: 'Sistema Reservas',
+          saldo: 0,
+          responsable: 'Sistema',
           edificio_id,
           fecha: new Date().toISOString()
         }),
