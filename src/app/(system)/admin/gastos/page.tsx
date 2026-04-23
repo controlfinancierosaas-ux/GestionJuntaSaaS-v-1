@@ -125,15 +125,31 @@ export default function GastosPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 1. Validar montos de renglones vs monto total
+    const totalRenglones = nuevoGasto.items.reduce((acc, it) => acc + (parseFloat(it.monto_renglon_bs as any) || 0), 0);
+    const montoTotalBs = parseFloat(nuevoGasto.monto_bs as string) || 0;
+    
+    if (nuevoGasto.items.some(it => it.articulo_nombre !== "") && Math.abs(totalRenglones - montoTotalBs) > 0.01) {
+      alert(`El total de los renglones (Bs. ${totalRenglones.toFixed(2)}) no coincide con el monto total del gasto (Bs. ${montoTotalBs.toFixed(2)}).`);
+      return;
+    }
+
     setSaving(true);
     try {
+      // Filtrar campos que NO existen en la tabla gastos_facturas para evitar error 400
+      const { items, posee_comprobante, fecha_envio_administradora, pagador_nombre, ...cleanGastoData } = nuevoGasto as any;
+      
       const data = {
-        ...nuevoGasto,
+        ...cleanGastoData,
         monto_usd: parseFloat(nuevoGasto.monto_usd as string) || 0,
-        monto_bs: parseFloat(nuevoGasto.monto_bs as string) || 0,
+        monto_bs: montoTotalBs,
         tasa_bcv_factura: parseFloat(nuevoGasto.tasa_bcv_factura as string) || 0,
+        // Si el método es administradora y hay fecha de envío, podemos guardarlo en notas o similar, 
+        // pero por ahora lo quitamos para que no de error 400.
         items: nuevoGasto.items.filter(it => it.articulo_nombre !== "")
       };
+      
       const res = await fetch("/api/admin/gastos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

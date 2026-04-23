@@ -293,15 +293,28 @@ export default function IncidentDetailPage() {
 
   const handleSaveGasto = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 1. Validar montos de renglones vs monto total
+    const totalRenglones = gastoData.items.reduce((acc, it) => acc + (parseFloat(it.monto_renglon_bs as any) || 0), 0);
+    const montoTotalBs = parseFloat(gastoData.monto_bs as string) || 0;
+    
+    if (gastoData.items.some(it => it.articulo_nombre !== "") && Math.abs(totalRenglones - montoTotalBs) > 0.01) {
+      alert(`El total de los renglones (Bs. ${totalRenglones.toFixed(2)}) no coincide con el monto total del gasto (Bs. ${montoTotalBs.toFixed(2)}).`);
+      return;
+    }
+
     setSaving(true);
     try {
+      // Filtrar campos que NO existen en la tabla gastos_facturas para evitar error 400
+      const { items, ...cleanGastoData } = gastoData as any;
+
       const data = {
-        ...gastoData,
+        ...cleanGastoData,
         proveedor_id: incident.proveedor_id,
         incidencia_id: params.id,
         concepto_descripcion: gastoData.concepto_descripcion || `Resolución Incidencia ${incident.codigo_personalizado || params.id}: ${incident.area_afectada}`,
         monto_usd: parseFloat(gastoData.monto_usd) || 0,
-        monto_bs: parseFloat(gastoData.monto_bs) || 0,
+        monto_bs: montoTotalBs,
         tasa_bcv_factura: parseFloat(gastoData.tasa_bcv_factura) || 0,
         items: gastoData.items.filter(it => it.articulo_nombre !== "")
       };
