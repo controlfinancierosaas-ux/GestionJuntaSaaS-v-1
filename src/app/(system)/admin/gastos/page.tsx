@@ -228,15 +228,20 @@ export default function GastosPage() {
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Proveedor (Buscador)</label>
                   <div className="flex gap-2">
-                    <select
+                    <input
+                      list="proveedores-datalist"
                       required
-                      value={nuevoGasto.proveedor_id}
-                      onChange={e => setNuevaGasto({...nuevoGasto, proveedor_id: e.target.value})}
+                      value={proveedores.find(p => p.id === nuevoGasto.proveedor_id)?.nombre || ""}
+                      onChange={e => {
+                        const p = proveedores.find(x => x.nombre === e.target.value);
+                        setNuevaGasto({...nuevoGasto, proveedor_id: p ? p.id : ""});
+                      }}
+                      placeholder="Buscar por nombre..."
                       className="flex-1 bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white focus:border-emerald-500"
-                    >
-                      <option value="">Seleccione o cree uno nuevo...</option>
-                      {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.rif_cedula})</option>)}
-                    </select>
+                    />
+                    <datalist id="proveedores-datalist">
+                      {proveedores.map(p => <option key={p.id} value={p.nombre}>{p.rif_cedula}</option>)}
+                    </datalist>
                     <button 
                       type="button" 
                       onClick={() => setShowNewProvModal(true)}
@@ -331,9 +336,17 @@ export default function GastosPage() {
                       setNuevaGasto({...nuevoGasto, items});
                     }} className="col-span-3 bg-neutral-800 p-2 rounded text-white text-xs">
                        <option value="">Categoría...</option>
+                       <option value="Ascensor">Ascensor</option>
+                       <option value="Bomba de Agua">Bomba de Agua</option>
+                       <option value="Electricidad">Electricidad</option>
+                       <option value="Plomería">Plomería</option>
                        <option value="Iluminación">Iluminación</option>
                        <option value="Limpieza">Limpieza</option>
-                       <option value="Plomería">Plomería</option>
+                       <option value="CCTV / Cámaras">CCTV / Cámaras</option>
+                       <option value="Jardinería">Jardinería</option>
+                       <option value="Pintura">Pintura</option>
+                       <option value="Insumos">Insumos</option>
+                       <option value="Otros">Otros</option>
                     </select>
 
                     <input type="number" value={it.monto_renglon_bs} onChange={e => {
