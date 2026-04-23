@@ -7,6 +7,7 @@ export default function GastosPage() {
   const router = useRouter();
   const [gastos, setGastos] = useState<any[]>([]);
   const [proveedores, setProveedores] = useState<any[]>([]);
+  const [articulos, setArticulos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   
@@ -36,9 +37,7 @@ export default function GastosPage() {
     fecha_envio_administradora: "",
     pagador_nombre: "",
     estatus_pago: "Pendiente",
-    items: [
-      { articulo_nombre: "", categoria: "", cantidad: 1, unidad: "Unidad", monto_renglon_bs: 0 }
-    ]
+    items: []
   };
 
   const [nuevoGasto, setNuevaGasto] = useState(initialGasto);
@@ -98,12 +97,14 @@ export default function GastosPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resGastos, resProvs] = await Promise.all([
+      const [resGastos, resProvs, resArts] = await Promise.all([
         fetch("/api/admin/gastos"),
-        fetch("/api/admin/proveedores")
+        fetch("/api/admin/proveedores"),
+        fetch("/api/admin/articulos")
       ]);
       setGastos(await resGastos.json());
       setProveedores(await resProvs.json());
+      setArticulos(await resArts.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -172,15 +173,21 @@ export default function GastosPage() {
     e.preventDefault();
     
     const montoTotalBs = parseFloat(nuevoGasto.monto_bs as string) || 0;
+    const esInventario = nuevoGasto.categoria_gasto === "Compra para Inventario";
     
-    // Filtrar items válidos (solo los que tienen nombre de artículo)
-    const itemsValidos = nuevoGasto.items ? nuevoGasto.items.filter((it: any) => it.articulo_nombre && it.articulo_nombre.trim() !== "") : [];
+    // Solo procesamos items si es explícitamente una Compra para Inventario
+    let itemsValidos: any[] = [];
+    if (esInventario) {
+      itemsValidos = nuevoGasto.items ? nuevoGasto.items.filter((it: any) => it.articulo_nombre && it.articulo_nombre.trim() !== "") : [];
+      
+      if (itemsValidos.length === 0) {
+        alert("Si seleccionó 'Compra para Inventario', debe agregar al menos un artículo.");
+        return;
+      }
 
-    // Validación de montos de renglones vs monto total solo si hay items
-    if (itemsValidos.length > 0) {
       const totalRenglones = itemsValidos.reduce((acc, it) => acc + (parseFloat(it.monto_renglon_bs as any) || 0), 0);
       if (Math.abs(totalRenglones - montoTotalBs) > 0.01) {
-        alert(`El total de los renglones (Bs. ${totalRenglones.toFixed(2)}) no coincide con el monto total del gasto (Bs. ${montoTotalBs.toFixed(2)}).`);
+        alert(`El total de los renglones (Bs. ${totalRenglones.toFixed(2)}) no coincide con el monto total de la factura (Bs. ${montoTotalBs.toFixed(2)}).`);
         return;
       }
     }
@@ -194,7 +201,7 @@ export default function GastosPage() {
         monto_usd: parseFloat(nuevoGasto.monto_usd as string) || 0,
         monto_bs: montoTotalBs,
         tasa_bcv_factura: parseFloat(nuevoGasto.tasa_bcv_factura as string) || 0,
-        items: itemsValidos // Solo enviamos los items que realmente existen
+        items: esInventario ? itemsValidos : [] // SOLO mandamos items si es compra de inventario
       };
       
       const url = editingId ? `/api/admin/gastos/${editingId}` : "/api/admin/gastos";
@@ -420,12 +427,21 @@ export default function GastosPage() {
                   <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Clasificación del Gasto</label>
                   <select
                     value={nuevoGasto.categoria_gasto}
-                    onChange={e => setNuevaGasto({...nuevoGasto, categoria_gasto: e.target.value})}
-                    className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white text-sm"
+                    onChange={e => {
+                      const val = e.target.value;
+                      // Si cambia a inventario, asegurar que tenga al menos un item inicial
+                      setNuevaGasto({
+                        ...nuevoGasto, 
+                        categoria_gasto: val,
+                        items: val === "Compra para Inventario" ? [{ articulo_nombre: "", categoria: "", cantidad: 1, unidad: "Unidad", monto_renglon_bs: 0 }] : []
+                      });
+                    }}
+                    className="w-full bg-neutral-800 border border-emerald-500/50 p-3 rounded-lg text-white text-sm focus:ring-2 ring-emerald-500/20"
                   >
                     <option value="Mantenimiento Recurrente">Mantenimiento Recurrente</option>
                     <option value="Reparación Puntual">Reparación Puntual</option>
-                    <option value="Insumos / Repuestos">Insumos / Repuestos</option>
+                    <option value="Compra para Inventario">📦 Compra para INVENTARIO</option>
+                    <option value="Insumos / Repuestos">Insumos / Repuestos (Uso inmediato)</option>
                     <option value="Servicios Básicos">Servicios Básicos (Luz/Agua/etc)</option>
                     <option value="Honorarios Profesionales">Honorarios Profesionales</option>
                     <option value="Otros">Otros</option>
@@ -523,71 +539,69 @@ export default function GastosPage() {
                 </div>
               </div>
 
-              {/* Bloque 3: Renglones de Inventario (Si es Insumos/Otros) */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-emerald-500 flex justify-between">
-                  RENGLONES DE LA NOTA / ARTÍCULOS 
-                  <button type="button" onClick={addRow} className="text-xs bg-emerald-900/30 px-2 py-1 rounded">+ Agregar Renglón</button>
-                </h4>
-                <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-neutral-500 uppercase px-2">
-                  <div className="col-span-1">Cant</div>
-                  <div className="col-span-2">Unidad</div>
-                  <div className="col-span-4">Artículo/Nombre</div>
-                  <div className="col-span-3">Categoría</div>
-                  <div className="col-span-2 text-right">Monto Bs.</div>
-                </div>
-                {nuevoGasto.items.map((it, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2">
-                    <input type="number" value={it.cantidad} onChange={e => {
-                      const items = [...nuevoGasto.items];
-                      items[idx].cantidad = parseFloat(e.target.value);
-                      setNuevaGasto({...nuevoGasto, items});
-                    }} className="col-span-1 bg-neutral-800 p-2 rounded text-white text-xs" />
-                    
-                    <select value={it.unidad} onChange={e => {
-                      const items = [...nuevoGasto.items];
-                      items[idx].unidad = e.target.value;
-                      setNuevaGasto({...nuevoGasto, items});
-                    }} className="col-span-2 bg-neutral-800 p-2 rounded text-white text-xs">
-                       <option value="Unidad">Unid.</option>
-                       <option value="Paquete">Paq.</option>
-                       <option value="Galón">Gal.</option>
-                       <option value="Litro">Lt.</option>
-                    </select>
-
-                    <input type="text" value={it.articulo_nombre} onChange={e => {
-                      const items = [...nuevoGasto.items];
-                      items[idx].articulo_nombre = e.target.value;
-                      setNuevaGasto({...nuevoGasto, items});
-                    }} className="col-span-4 bg-neutral-800 p-2 rounded text-white text-xs" placeholder="Ej: Bombillo LED" />
-                    
-                    <select value={it.categoria} onChange={e => {
-                      const items = [...nuevoGasto.items];
-                      items[idx].categoria = e.target.value;
-                      setNuevaGasto({...nuevoGasto, items});
-                    }} className="col-span-3 bg-neutral-800 p-2 rounded text-white text-xs">
-                       <option value="">Categoría...</option>
-                       <option value="Ascensor">Ascensor</option>
-                       <option value="Bomba de Agua">Bomba de Agua</option>
-                       <option value="Electricidad">Electricidad</option>
-                       <option value="Plomería">Plomería</option>
-                       <option value="Iluminación">Iluminación</option>
-                       <option value="Limpieza">Limpieza</option>
-                       <option value="CCTV / Cámaras">CCTV / Cámaras</option>
-                       <option value="Jardinería">Jardinería</option>
-                       <option value="Pintura">Pintura</option>
-                       <option value="Insumos">Insumos</option>
-                       <option value="Otros">Otros</option>
-                    </select>
-
-                    <input type="number" value={it.monto_renglon_bs} onChange={e => {
-                      const items = [...nuevoGasto.items];
-                      items[idx].monto_renglon_bs = parseFloat(e.target.value);
-                      setNuevaGasto({...nuevoGasto, items});
-                    }} className="col-span-2 bg-neutral-800 p-2 rounded text-white text-xs text-right" />
+              {/* Bloque 3: Renglones de Inventario (SOLO si es Compra para Inventario) */}
+              {nuevoGasto.categoria_gasto === "Compra para Inventario" && (
+                <div className="space-y-3 bg-emerald-900/5 p-4 rounded-xl border border-emerald-500/20">
+                  <h4 className="text-sm font-bold text-emerald-500 flex justify-between items-center">
+                    ARTÍCULOS PARA CARGAR AL INVENTARIO
+                    <button type="button" onClick={addRow} className="text-[10px] bg-emerald-600 px-2 py-1 rounded text-white">+ Agregar Artículo</button>
+                  </h4>
+                  <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-neutral-500 uppercase px-2">
+                    <div className="col-span-1">Cant</div>
+                    <div className="col-span-2">Unidad</div>
+                    <div className="col-span-7">Seleccionar Artículo del Catálogo</div>
+                    <div className="col-span-2 text-right">Monto Bs.</div>
                   </div>
-                ))}
-              </div>
+                  {nuevoGasto.items.map((it, idx) => (
+                    <div key={idx} className="grid grid-cols-12 gap-2">
+                      <input type="number" value={it.cantidad} onChange={e => {
+                        const items = [...nuevoGasto.items];
+                        items[idx].cantidad = parseFloat(e.target.value);
+                        setNuevaGasto({...nuevoGasto, items});
+                      }} className="col-span-1 bg-neutral-800 p-2 rounded text-white text-xs border border-neutral-700" />
+                      
+                      <select value={it.unidad} onChange={e => {
+                        const items = [...nuevoGasto.items];
+                        items[idx].unidad = e.target.value;
+                        setNuevaGasto({...nuevoGasto, items});
+                      }} className="col-span-2 bg-neutral-800 p-2 rounded text-white text-xs border border-neutral-700">
+                         <option value="Unidad">Unid.</option>
+                         <option value="Paquete">Paq.</option>
+                         <option value="Galón">Gal.</option>
+                         <option value="Litro">Lt.</option>
+                      </select>
+
+                      <div className="col-span-7 relative">
+                        <input 
+                          list={`articulos-datalist-${idx}`}
+                          value={it.articulo_nombre} 
+                          onChange={e => {
+                            const art = articulos.find(a => a.nombre === e.target.value);
+                            const items = [...nuevoGasto.items];
+                            items[idx].articulo_nombre = e.target.value;
+                            if (art) items[idx].categoria = art.categoria;
+                            setNuevaGasto({...nuevoGasto, items});
+                          }} 
+                          className="w-full bg-neutral-800 p-2 rounded text-white text-xs border border-neutral-700" 
+                          placeholder="Buscar artículo..." 
+                        />
+                        <datalist id={`articulos-datalist-${idx}`}>
+                          {articulos.map(a => <option key={a.id} value={a.nombre}>{a.categoria}</option>)}
+                        </datalist>
+                      </div>
+
+                      <input type="number" step="0.01" value={it.monto_renglon_bs} onChange={e => {
+                        const items = [...nuevoGasto.items];
+                        items[idx].monto_renglon_bs = parseFloat(e.target.value);
+                        setNuevaGasto({...nuevoGasto, items});
+                      }} className="col-span-2 bg-neutral-800 p-2 rounded text-white text-xs text-right border border-neutral-700" />
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-emerald-500/70 italic">
+                    * Estos artículos se sumarán automáticamente al stock de tu inventario al guardar.
+                  </p>
+                </div>
+              )}
 
               {/* Bloque 4: Método de Pago Detallado */}
               <div className="grid md:grid-cols-3 gap-4">
