@@ -137,16 +137,13 @@ export default function GastosPage() {
 
     setSaving(true);
     try {
-      // Filtrar campos que NO existen en la tabla gastos_facturas para evitar error 400
-      const { items, posee_comprobante, fecha_envio_administradora, pagador_nombre, ...cleanGastoData } = nuevoGasto as any;
+      const { items, ...gastoData } = nuevoGasto as any;
       
       const data = {
-        ...cleanGastoData,
+        ...gastoData,
         monto_usd: parseFloat(nuevoGasto.monto_usd as string) || 0,
         monto_bs: montoTotalBs,
         tasa_bcv_factura: parseFloat(nuevoGasto.tasa_bcv_factura as string) || 0,
-        // Si el método es administradora y hay fecha de envío, podemos guardarlo en notas o similar, 
-        // pero por ahora lo quitamos para que no de error 400.
         items: nuevoGasto.items.filter(it => it.articulo_nombre !== "")
       };
       

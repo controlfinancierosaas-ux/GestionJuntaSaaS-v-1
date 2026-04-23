@@ -21,10 +21,13 @@ CREATE TABLE IF NOT EXISTS public.gastos_facturas (
     categoria_gasto text, -- Mantenimiento Recurrente, Reparación, Insumos, etc.
     tipo_mantenimiento text DEFAULT 'Correctivo', -- Preventivo, Correctivo, Otro
     metodo_pago_sugerido text, -- Administradora, Caja Chica, etc.
+    posee_comprobante boolean DEFAULT true,
+    pagador_nombre text,
     
     -- Control de Pago
     estatus_pago text DEFAULT 'Pendiente', -- Pendiente, Enviado a Administradora, Pagado
     fecha_pago date,
+    fecha_envio_administradora date,
     monto_pagado_bs numeric DEFAULT 0,
     responsable_autoriza text,
     

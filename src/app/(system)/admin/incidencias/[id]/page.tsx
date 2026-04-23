@@ -305,11 +305,10 @@ export default function IncidentDetailPage() {
 
     setSaving(true);
     try {
-      // Filtrar campos que NO existen en la tabla gastos_facturas para evitar error 400
-      const { items, ...cleanGastoData } = gastoData as any;
+      const { items, ...gastoDataClean } = gastoData as any;
 
       const data = {
-        ...cleanGastoData,
+        ...gastoDataClean,
         proveedor_id: incident.proveedor_id,
         incidencia_id: params.id,
         concepto_descripcion: gastoData.concepto_descripcion || `Resolución Incidencia ${incident.codigo_personalizado || params.id}: ${incident.area_afectada}`,
