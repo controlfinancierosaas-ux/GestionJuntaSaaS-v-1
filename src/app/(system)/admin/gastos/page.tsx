@@ -94,7 +94,37 @@ export default function GastosPage() {
   const [filterEstatus, setFilterEstatus] = useState("Todos");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // ... (fetchData y otros efectos se mantienen igual)
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [resGastos, resProvs] = await Promise.all([
+        fetch("/api/admin/gastos"),
+        fetch("/api/admin/proveedores")
+      ]);
+      setGastos(await resGastos.json());
+      setProveedores(await resProvs.json());
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  };
+
+  const handleCreateProv = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/proveedores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nuevoProv),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProveedores([data, ...proveedores]);
+        setNuevaGasto({ ...nuevoGasto, proveedor_id: data.id });
+        setShowNewProvModal(false);
+      }
+    } catch (err) { alert("Error al crear proveedor"); }
+    finally { setSaving(false); }
+  };
 
   const handleEdit = (g: any) => {
     setEditingId(g.id);
@@ -185,6 +215,15 @@ export default function GastosPage() {
       alert("Error crítico al guardar: " + err.message); 
     }
     finally { setSaving(false); }
+  };
+
+  const addRow = () => {
+    if (nuevoGasto.items.length < 5) {
+      setNuevaGasto({
+        ...nuevoGasto,
+        items: [...nuevoGasto.items, { articulo_nombre: "", categoria: "", cantidad: 1, unidad: "Unidad", monto_renglon_bs: 0 }]
+      });
+    }
   };
 
   const filtered = gastos.filter(g => {
