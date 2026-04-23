@@ -173,9 +173,12 @@ export default function GastosPage() {
     
     const montoTotalBs = parseFloat(nuevoGasto.monto_bs as string) || 0;
     
-    // Validación de items solo si hay items cargados (evitar bloqueo en edición simple)
-    if (nuevoGasto.items && nuevoGasto.items.length > 0 && nuevoGasto.items.some(it => it.articulo_nombre !== "")) {
-      const totalRenglones = nuevoGasto.items.reduce((acc, it) => acc + (parseFloat(it.monto_renglon_bs as any) || 0), 0);
+    // Filtrar items válidos (solo los que tienen nombre de artículo)
+    const itemsValidos = nuevoGasto.items ? nuevoGasto.items.filter((it: any) => it.articulo_nombre && it.articulo_nombre.trim() !== "") : [];
+
+    // Validación de montos de renglones vs monto total solo si hay items
+    if (itemsValidos.length > 0) {
+      const totalRenglones = itemsValidos.reduce((acc, it) => acc + (parseFloat(it.monto_renglon_bs as any) || 0), 0);
       if (Math.abs(totalRenglones - montoTotalBs) > 0.01) {
         alert(`El total de los renglones (Bs. ${totalRenglones.toFixed(2)}) no coincide con el monto total del gasto (Bs. ${montoTotalBs.toFixed(2)}).`);
         return;
@@ -191,7 +194,7 @@ export default function GastosPage() {
         monto_usd: parseFloat(nuevoGasto.monto_usd as string) || 0,
         monto_bs: montoTotalBs,
         tasa_bcv_factura: parseFloat(nuevoGasto.tasa_bcv_factura as string) || 0,
-        items: items ? items.filter((it: any) => it.articulo_nombre !== "") : []
+        items: itemsValidos // Solo enviamos los items que realmente existen
       };
       
       const url = editingId ? `/api/admin/gastos/${editingId}` : "/api/admin/gastos";
