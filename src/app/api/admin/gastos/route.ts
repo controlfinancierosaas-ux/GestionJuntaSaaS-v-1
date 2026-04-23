@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+// Intentar obtener la clave de servicio de varias posibles variables de entorno
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
+                   process.env.SUPABASE_SERVICE_KEY || 
+                   process.env.SERVICE_ROLE_KEY ||
+                   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function GET() {
-  if (!supabaseUrl || !supabaseKey) return NextResponse.json([], { status: 500 });
-  const apiKey = supabaseServiceKey || supabaseKey;
+  if (!supabaseUrl || !serviceKey) return NextResponse.json([], { status: 500 });
 
   try {
     const cookieStore = await cookies();
@@ -16,10 +18,13 @@ export async function GET() {
     const { edificio_id } = JSON.parse(userDataCookie.value);
 
     const res = await fetch(`${supabaseUrl}/rest/v1/gastos_facturas?edificio_id=eq.${edificio_id}&select=*,proveedores(nombre,categoria),incidencias(codigo_personalizado)&order=fecha_factura.desc`, {
-      headers: { "apikey": supabaseKey, "Authorization": `Bearer ${apiKey}` },
+      headers: { 
+        "apikey": serviceKey, 
+        "Authorization": `Bearer ${serviceKey}` 
+      },
     });
     
-    if (!res.ok) return NextResponse.json([], { status: 500 });
+    if (!res.ok) return NextResponse.json([], { status: res.status });
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
@@ -28,8 +33,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!supabaseUrl || !supabaseKey) return NextResponse.json({ error: "Missing config" }, { status: 500 });
-  const apiKey = supabaseServiceKey || supabaseKey;
+  if (!supabaseUrl || !serviceKey) return NextResponse.json({ error: "Missing config" }, { status: 500 });
 
   try {
     const cookieStore = await cookies();
@@ -40,23 +44,20 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { items, ...gastoData } = body;
 
-    // Limpieza de datos para compatibilidad con Supabase (Strings vacíos -> null)
+    // Limpieza de datos: Convertir strings vacíos en campos sensibles a NULL
     const dataToSave: Record<string, any> = { ...gastoData, edificio_id };
-    
     for (const key in dataToSave) {
-      const val = dataToSave[key];
-      // Manejo de Fechas y UUIDs vacíos
-      if (val === "" && (key.startsWith("fecha_") || key.endsWith("_id"))) {
+      if (dataToSave[key] === "" && (key.startsWith("fecha_") || key.endsWith("_id") || key === "incidencia_id")) {
         dataToSave[key] = null;
       }
     }
     
-    // 1. Insertar el gasto principal (Transparente)
+    // 1. Insertar el gasto principal (Usando serviceKey para evitar 401)
     const res = await fetch(`${supabaseUrl}/rest/v1/gastos_facturas`, {
       method: "POST",
       headers: {
-        "apikey": supabaseKey,
-        "Authorization": `Bearer ${apiKey}`,
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
         "Content-Type": "application/json",
         "Prefer": "return=representation"
       },
@@ -64,21 +65,21 @@ export async function POST(req: Request) {
     });
 
     if (!res.ok) {
-      const error = await res.json();
-      return NextResponse.json({ error }, { status: res.status });
+      const errorText = await res.text();
+      console.error("Supabase Error Gastos:", errorText);
+      return NextResponse.json({ error: errorText }, { status: res.status });
     }
 
     const createdGasto = await res.json();
     const gastoId = createdGasto[0].id;
 
-    // 1.1. Si el método de pago es Caja Chica, registrar el movimiento de salida
+    // 1.1. Registro automático en Caja Chica si aplica
     if (gastoData.metodo_pago_sugerido === "Caja Chica") {
-      console.log("Registrando egreso automático en Caja Chica...");
-      const ccRes = await fetch(`${supabaseUrl}/rest/v1/caja_chica`, {
+      await fetch(`${supabaseUrl}/rest/v1/caja_chica`, {
         method: "POST",
         headers: {
-          "apikey": supabaseKey,
-          "Authorization": `Bearer ${apiKey}`,
+          "apikey": serviceKey,
+          "Authorization": `Bearer ${serviceKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -91,17 +92,12 @@ export async function POST(req: Request) {
           tasa_bcv: parseFloat(gastoData.tasa_bcv_factura) || 0,
           fecha: gastoData.fecha_factura || new Date().toISOString(),
           responsable: gastoData.responsable_autoriza || "Administración",
-          notas: `Vinculado a Gasto ID: ${gastoId}. Ref: ${gastoData.numero_comprobante || 'S/N'}`
+          notas: `Vinculado a Gasto ID: ${gastoId}`
         }),
       });
-      if (!ccRes.ok) {
-        console.error("Error registrando en Caja Chica:", await ccRes.text());
-      } else {
-        console.log("Egreso en Caja Chica registrado con éxito.");
-      }
     }
 
-    // 2. Si hay items de inventario, insertarlos vinculados al gasto
+    // 2. Insertar items de inventario si existen
     if (items && Array.isArray(items) && items.length > 0) {
       const movimientos = items.map((item: any) => ({
         ...item,
@@ -112,8 +108,8 @@ export async function POST(req: Request) {
       await fetch(`${supabaseUrl}/rest/v1/movimientos_inventario`, {
         method: "POST",
         headers: {
-          "apikey": supabaseKey,
-          "Authorization": `Bearer ${apiKey}`,
+          "apikey": serviceKey,
+          "Authorization": `Bearer ${serviceKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(movimientos),
@@ -121,7 +117,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(createdGasto[0]);
-  } catch (error) {
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Fatal API Error Gastos:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
