@@ -18,6 +18,7 @@ const MENU_GROUPS = [
     items: [
       { label: "Incidencias", href: "/admin/incidencias", icon: "🛠️" },
       { label: "Proveedores", href: "/admin/proveedores", icon: "👥" },
+      { label: "Cronograma de Servicios", href: "/admin/proveedores/reporte-recurrentes", icon: "📅" },
       { label: "Control de Gastos", href: "/admin/gastos", icon: "💸" },
       { label: "Inventario / Almacén", href: "/admin/inventario", icon: "📦" },
       { label: "Caja Chica", href: "/admin/caja-chica", icon: "💰" },
