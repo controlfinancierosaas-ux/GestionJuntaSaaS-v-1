@@ -33,13 +33,25 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!supabaseUrl || !serviceKey) return NextResponse.json({ error: "Missing config" }, { status: 500 });
+  if (!supabaseUrl || !serviceKey) {
+    console.error("Configuración de Supabase faltante");
+    return NextResponse.json({ error: "Missing config" }, { status: 500 });
+  }
 
   try {
     const cookieStore = await cookies();
     const userDataCookie = cookieStore.get("user_data");
     if (!userDataCookie) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const { edificio_id } = JSON.parse(userDataCookie.value);
+    
+    let user;
+    try {
+      user = JSON.parse(userDataCookie.value);
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid user data" }, { status: 401 });
+    }
+    
+    const edificio_id = user.edificio_id;
+    if (!edificio_id) return NextResponse.json({ error: "Edificio ID no encontrado en sesión" }, { status: 400 });
 
     const body = await req.json();
     const { items, ...gastoData } = body;
@@ -47,12 +59,14 @@ export async function POST(req: Request) {
     // Limpieza de datos: Convertir strings vacíos en campos sensibles a NULL
     const dataToSave: Record<string, any> = { ...gastoData, edificio_id };
     for (const key in dataToSave) {
-      if (dataToSave[key] === "" && (key.startsWith("fecha_") || key.endsWith("_id") || key === "incidencia_id")) {
+      if (dataToSave[key] === "" && (key.startsWith("fecha_") || key.endsWith("_id") || key === "incidencia_id" || key === "proveedor_id")) {
         dataToSave[key] = null;
       }
     }
     
-    // 1. Insertar el gasto principal (Usando serviceKey para evitar 401)
+    console.log("Intentando guardar gasto para edificio:", edificio_id);
+
+    // 1. Insertar el gasto principal
     const res = await fetch(`${supabaseUrl}/rest/v1/gastos_facturas`, {
       method: "POST",
       headers: {
@@ -66,11 +80,20 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("Supabase Error Gastos:", errorText);
-      return NextResponse.json({ error: errorText }, { status: res.status });
+      console.error("Supabase Error Gastos (RLS?):", errorText);
+      // Intentar parsear el error para dar un mensaje más limpio
+      let cleanError = errorText;
+      try {
+        const errObj = JSON.parse(errorText);
+        cleanError = errObj.message || errorText;
+      } catch(e) {}
+      return NextResponse.json({ error: cleanError }, { status: res.status });
     }
 
     const createdGasto = await res.json();
+    if (!createdGasto || createdGasto.length === 0) {
+      return NextResponse.json({ error: "No se pudo crear el gasto" }, { status: 500 });
+    }
     const gastoId = createdGasto[0].id;
 
     // 1.1. Registro automático en Caja Chica si aplica

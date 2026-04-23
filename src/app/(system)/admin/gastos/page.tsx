@@ -156,8 +156,13 @@ export default function GastosPage() {
         setShowModal(false);
         setNuevaGasto(initialGasto);
         fetchData();
+      } else {
+        const errData = await res.json();
+        alert(`Error al guardar: ${errData.error || res.statusText}`);
       }
-    } catch (err) { alert("Error al guardar"); }
+    } catch (err: any) { 
+      alert("Error crítico al guardar: " + err.message); 
+    }
     finally { setSaving(false); }
   };
 
