@@ -47,12 +47,12 @@ export async function POST(req: Request) {
 
     if (!edificio_id) return NextResponse.json({ error: "Edificio no identificado" }, { status: 400 });
 
-    const numeroReserva = `RS-${Date.now().toString().slice(-6)}`;
+    // GENERAR NÚMERO ENTERO (máximo 9 dígitos para cumplir con el tipo integer de Postgres)
+    const numeroReserva = parseInt(Date.now().toString().slice(-8));
 
-    // PAYLOAD LIMPIO: Solo columnas confirmadas
     const payload = {
       edificio_id,
-      numero: numeroReserva,
+      numero: numeroReserva, // AHORA ES UN ENTERO
       propietario: body.nombre_propietario,
       unidad_codigo: body.apartamento,
       tipo_evento: body.motivo_evento,
@@ -87,14 +87,13 @@ export async function POST(req: Request) {
 
     const data = await res.json();
 
-    // Emails
     const htmlEmail = `<div style="font-family:Arial;padding:20px;border:1px solid #eee;">
-      <h2 style="color:#6366f1;">Solicitud Recibida: ${numeroReserva}</h2>
+      <h2 style="color:#6366f1;">Solicitud Recibida</h2>
       <p>Hola <b>${body.nombre_propietario}</b>, recibimos tu solicitud para el <b>${body.fecha_evento}</b>.</p>
     </div>`;
     
-    await sendEmail(body.email, `Reserva Recibida ${numeroReserva}`, htmlEmail);
-    await sendEmail("correojago@gmail.com", `NUEVA RESERVA ${numeroReserva}`, htmlEmail);
+    await sendEmail(body.email, `Reserva Recibida #${numeroReserva}`, htmlEmail);
+    await sendEmail("correojago@gmail.com", `NUEVA RESERVA #${numeroReserva}: ${body.apartamento}`, htmlEmail);
 
     return NextResponse.json(data[0]);
   } catch (error: any) {
