@@ -35,6 +35,7 @@ export default function GastosPage() {
     responsable_autoriza: "",
     fecha_envio_administradora: "",
     pagador_nombre: "",
+    estatus_pago: "Pendiente",
     items: [
       { articulo_nombre: "", categoria: "", cantidad: 1, unidad: "Unidad", monto_renglon_bs: 0 }
     ]
