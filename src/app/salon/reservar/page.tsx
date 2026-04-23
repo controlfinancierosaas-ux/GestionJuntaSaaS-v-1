@@ -136,7 +136,7 @@ export default function PublicSalonReservaPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Fecha del Evento</label>
-              <input type="text" required value={formatDateForInput(formData.fecha_evento)} className="w-full bg-black border border-neutral-800 p-4 rounded-xl text-white" placeholder="dd/mm/yyyy" onChange={e => setFormData({...formData, fecha_evento: parseDateFromUI(e.target.value)})} />
+              <input type="date" required value={formData.fecha_evento} className="w-full bg-black border border-neutral-800 p-4 rounded-xl text-white focus:border-purple-600 transition-colors" onChange={e => setFormData({...formData, fecha_evento: e.target.value})} />
             </div>
             <div>
               <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Motivo del Evento</label>

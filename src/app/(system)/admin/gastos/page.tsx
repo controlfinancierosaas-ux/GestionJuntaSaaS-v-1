@@ -268,11 +268,11 @@ export default function GastosPage() {
               <div className="grid md:grid-cols-4 gap-4 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700">
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Fecha Factura</label>
-                  <input type="text" value={formatDateForInput(nuevoGasto.fecha_factura)} onChange={e => setNuevaGasto({...nuevoGasto, fecha_factura: parseDateFromUI(e.target.value)})} className="w-full bg-neutral-800 p-2 rounded text-white" placeholder="dd/mm/yyyy" />
+                  <input type="date" value={nuevoGasto.fecha_factura} onChange={e => setNuevaGasto({...nuevoGasto, fecha_factura: e.target.value})} className="w-full bg-neutral-800 p-2 rounded text-white" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Fecha Ejecución</label>
-                  <input type="text" value={formatDateForInput(nuevoGasto.fecha_ejecucion)} onChange={e => setNuevaGasto({...nuevoGasto, fecha_ejecucion: parseDateFromUI(e.target.value)})} className="w-full bg-neutral-800 p-2 rounded text-white" placeholder="dd/mm/yyyy" />
+                  <input type="date" value={nuevoGasto.fecha_ejecucion} onChange={e => setNuevaGasto({...nuevoGasto, fecha_ejecucion: e.target.value})} className="w-full bg-neutral-800 p-2 rounded text-white" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Nº Comprobante</label>
@@ -375,7 +375,7 @@ export default function GastosPage() {
                 {nuevoGasto.metodo_pago_sugerido === 'Administradora' && (
                   <div>
                     <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Fecha Envío a Admin.</label>
-                    <input type="text" value={formatDateForInput(nuevoGasto.fecha_envio_administradora)} onChange={e => setNuevaGasto({...nuevoGasto, fecha_envio_administradora: parseDateFromUI(e.target.value)})} className="w-full bg-neutral-800 p-3 rounded-lg text-white" placeholder="dd/mm/yyyy" />
+                    <input type="date" value={nuevoGasto.fecha_envio_administradora} onChange={e => setNuevaGasto({...nuevoGasto, fecha_envio_administradora: e.target.value})} className="w-full bg-neutral-800 p-3 rounded-lg text-white" />
                   </div>
                 )}
                 {nuevoGasto.metodo_pago_sugerido === 'Pago Móvil' && (

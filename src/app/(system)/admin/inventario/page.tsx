@@ -276,12 +276,11 @@ export default function InventarioPage() {
                     <div>
                       <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Fecha</label>
                       <input 
-                        type="text" 
+                        type="date" 
                         required={vincularGasto}
-                        value={formatDateForInput(nuevoMov.fecha_factura)}
+                        value={nuevoMov.fecha_factura}
                         className="w-full bg-neutral-700 p-2 rounded-lg text-white text-xs"
-                        placeholder="dd/mm/yyyy"
-                        onChange={e => setNuevoMov({...nuevoMov, fecha_factura: parseDateFromUI(e.target.value)})}
+                        onChange={e => setNuevoMov({...nuevoMov, fecha_factura: e.target.value})}
                       />
                     </div>
                   </div>

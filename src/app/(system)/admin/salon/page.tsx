@@ -247,7 +247,7 @@ export default function SalonReservasPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Fecha del Evento</label>
-                <input type="text" required value={formatDateForInput(nuevaReserva.fecha_evento)} className="w-full bg-neutral-800 p-3 rounded-lg text-white" placeholder="dd/mm/yyyy" onChange={e => setNuevaReserva({...nuevaReserva, fecha_evento: parseDateFromUI(e.target.value)})} />
+                <input type="date" required value={nuevaReserva.fecha_evento} className="w-full bg-neutral-800 p-3 rounded-lg text-white" onChange={e => setNuevaReserva({...nuevaReserva, fecha_evento: e.target.value})} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Motivo / Tipo de Evento</label>

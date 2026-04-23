@@ -173,10 +173,9 @@ export default function GestionCalidadPage() {
             <div className="flex items-center gap-2">
               <label className="text-xs text-neutral-400 uppercase font-bold">Desde:</label>
               <input
-                type="text"
-                value={formatDateForInput(dateFrom)}
-                onChange={e => setDateFrom(parseDateFromUI(e.target.value))}
-                placeholder="dd/mm/yyyy"
+                type="date"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
                 className="bg-neutral-700 border border-neutral-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
@@ -184,10 +183,9 @@ export default function GestionCalidadPage() {
             <div className="flex items-center gap-2">
               <label className="text-xs text-neutral-400 uppercase font-bold">Hasta:</label>
               <input
-                type="text"
-                value={formatDateForInput(dateTo)}
-                onChange={e => setDateTo(parseDateFromUI(e.target.value))}
-                placeholder="dd/mm/yyyy"
+                type="date"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
                 className="bg-neutral-700 border border-neutral-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
