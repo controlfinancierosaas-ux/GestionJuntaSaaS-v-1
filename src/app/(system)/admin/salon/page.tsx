@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { formatDateForInput, parseDateFromUI } from "@/lib/formatters";
+import { formatDate, formatDateForInput, parseDateFromUI } from "@/lib/formatters";
 
 export default function SalonReservasPage() {
   const [reservas, setReservas] = useState<any[]>([]);
