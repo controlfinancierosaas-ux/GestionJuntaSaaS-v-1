@@ -491,21 +491,41 @@ export default function IncidentDetailPage() {
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Fecha de Asignación</label>
-              <input
-                type="date"
-                value={incident.fecha_asignacion?.split("T")[0] || ""}
-                onChange={e => setIncident({...incident, fecha_asignacion: e.target.value})}
-                className="w-full bg-neutral-700 p-2 rounded"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formatDateForInput(incident.fecha_asignacion)}
+                  onChange={e => setIncident({...incident, fecha_asignacion: parseDateFromUI(e.target.value)})}
+                  placeholder="dd/mm/yyyy"
+                  className="w-full bg-neutral-700 p-2 pr-10 rounded"
+                />
+                <input
+                  type="date"
+                  value={incident.fecha_asignacion?.split("T")[0] || ""}
+                  onChange={e => setIncident({...incident, fecha_asignacion: e.target.value})}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 opacity-0 cursor-pointer z-10"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-lg">📅</span>
+              </div>
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Fecha de Resolución</label>
-              <input
-                type="date"
-                value={incident.fecha_resolucion?.split("T")[0] || ""}
-                onChange={e => setIncident({...incident, fecha_resolucion: e.target.value})}
-                className="w-full bg-neutral-700 p-2 rounded"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formatDateForInput(incident.fecha_resolucion)}
+                  onChange={e => setIncident({...incident, fecha_resolucion: parseDateFromUI(e.target.value)})}
+                  placeholder="dd/mm/yyyy"
+                  className="w-full bg-neutral-700 p-2 pr-10 rounded"
+                />
+                <input
+                  type="date"
+                  value={incident.fecha_resolucion?.split("T")[0] || ""}
+                  onChange={e => setIncident({...incident, fecha_resolucion: e.target.value})}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 opacity-0 cursor-pointer z-10"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-lg">📅</span>
+              </div>
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Monto (Bs.)</label>
@@ -770,23 +790,45 @@ export default function IncidentDetailPage() {
               <div className="grid md:grid-cols-4 gap-4 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700">
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Fecha Factura</label>
-                  <input
-                    type="date"
-                    required
-                    value={gastoData.fecha_factura}
-                    onChange={e => setGastoData({...gastoData, fecha_factura: e.target.value})}
-                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={formatDateForInput(gastoData.fecha_factura)}
+                      onChange={e => setGastoData({...gastoData, fecha_factura: parseDateFromUI(e.target.value)})}
+                      className="w-full bg-neutral-700 border border-neutral-600 p-2 pr-10 rounded text-white text-sm"
+                      placeholder="dd/mm/yyyy"
+                    />
+                    <input
+                      type="date"
+                      required
+                      value={gastoData.fecha_factura}
+                      onChange={e => setGastoData({...gastoData, fecha_factura: e.target.value})}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 opacity-0 cursor-pointer z-10"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-lg">📅</span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Fecha Ejecución</label>
-                  <input
-                    type="date"
-                    required
-                    value={gastoData.fecha_ejecucion}
-                    onChange={e => setGastoData({...gastoData, fecha_ejecucion: e.target.value})}
-                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={formatDateForInput(gastoData.fecha_ejecucion)}
+                      onChange={e => setGastoData({...gastoData, fecha_ejecucion: parseDateFromUI(e.target.value)})}
+                      className="w-full bg-neutral-700 border border-neutral-600 p-2 pr-10 rounded text-white text-sm"
+                      placeholder="dd/mm/yyyy"
+                    />
+                    <input
+                      type="date"
+                      required
+                      value={gastoData.fecha_ejecucion}
+                      onChange={e => setGastoData({...gastoData, fecha_ejecucion: e.target.value})}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 opacity-0 cursor-pointer z-10"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-lg">📅</span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Nº Factura</label>

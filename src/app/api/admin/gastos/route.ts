@@ -3,9 +3,11 @@ import { cookies } from "next/headers";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 export async function GET() {
   if (!supabaseUrl || !supabaseKey) return NextResponse.json([], { status: 500 });
+  const apiKey = supabaseServiceKey || supabaseKey;
 
   try {
     const cookieStore = await cookies();
@@ -14,7 +16,7 @@ export async function GET() {
     const { edificio_id } = JSON.parse(userDataCookie.value);
 
     const res = await fetch(`${supabaseUrl}/rest/v1/gastos_facturas?edificio_id=eq.${edificio_id}&select=*,proveedores(nombre,categoria),incidencias(codigo_personalizado)&order=fecha_factura.desc`, {
-      headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+      headers: { "apikey": supabaseKey, "Authorization": `Bearer ${apiKey}` },
     });
     
     if (!res.ok) return NextResponse.json([], { status: 500 });
@@ -27,6 +29,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!supabaseUrl || !supabaseKey) return NextResponse.json({ error: "Missing config" }, { status: 500 });
+  const apiKey = supabaseServiceKey || supabaseKey;
 
   try {
     const cookieStore = await cookies();
@@ -42,18 +45,18 @@ export async function POST(req: Request) {
     
     for (const key in dataToSave) {
       const val = dataToSave[key];
-      // 1. Manejo de Fechas y UUIDs vacíos
+      // Manejo de Fechas y UUIDs vacíos
       if (val === "" && (key.startsWith("fecha_") || key.endsWith("_id"))) {
         dataToSave[key] = null;
       }
     }
     
-    // 1. Insertar el gasto principal (Transparente: guarda todo lo que venga del form)
+    // 1. Insertar el gasto principal (Transparente)
     const res = await fetch(`${supabaseUrl}/rest/v1/gastos_facturas`, {
       method: "POST",
       headers: {
         "apikey": supabaseKey,
-        "Authorization": `Bearer ${supabaseKey}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "Prefer": "return=representation"
       },
@@ -75,7 +78,7 @@ export async function POST(req: Request) {
         method: "POST",
         headers: {
           "apikey": supabaseKey,
-          "Authorization": `Bearer ${supabaseKey}`,
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -110,7 +113,7 @@ export async function POST(req: Request) {
         method: "POST",
         headers: {
           "apikey": supabaseKey,
-          "Authorization": `Bearer ${supabaseKey}`,
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(movimientos),

@@ -310,24 +310,42 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-2">Fecha Inicio</label>
-                  <input
-                    type="text"
-                    value={formatDateForInput(formData.fecha_inicio_contrato)}
-                    onChange={e => setFormData({ ...formData, fecha_inicio_contrato: parseDateFromUI(e.target.value) })}
-                    className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
-                    placeholder="dd/mm/yyyy"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formatDateForInput(formData.fecha_inicio_contrato)}
+                      onChange={e => setFormData({ ...formData, fecha_inicio_contrato: parseDateFromUI(e.target.value) })}
+                      className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 pr-10 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                      placeholder="dd/mm/yyyy"
+                    />
+                    <input
+                      type="date"
+                      value={formData.fecha_inicio_contrato || ""}
+                      onChange={e => setFormData({ ...formData, fecha_inicio_contrato: e.target.value })}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 opacity-0 cursor-pointer z-10"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-lg">📅</span>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-2">Fecha Vencimiento</label>
-                  <input
-                    type="text"
-                    value={formatDateForInput(formData.fecha_vencimiento_contrato)}
-                    onChange={e => setFormData({ ...formData, fecha_vencimiento_contrato: parseDateFromUI(e.target.value) })}
-                    className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
-                    placeholder="dd/mm/yyyy"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formatDateForInput(formData.fecha_vencimiento_contrato)}
+                      onChange={e => setFormData({ ...formData, fecha_vencimiento_contrato: parseDateFromUI(e.target.value) })}
+                      className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 pr-10 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                      placeholder="dd/mm/yyyy"
+                    />
+                    <input
+                      type="date"
+                      value={formData.fecha_vencimiento_contrato || ""}
+                      onChange={e => setFormData({ ...formData, fecha_vencimiento_contrato: e.target.value })}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 opacity-0 cursor-pointer z-10"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-lg">📅</span>
+                  </div>
                 </div>
 
                 <div>

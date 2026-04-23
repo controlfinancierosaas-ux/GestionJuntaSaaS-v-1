@@ -172,22 +172,42 @@ export default function GestionCalidadPage() {
           <div className="flex flex-wrap gap-4 items-center pt-2 border-t border-neutral-700/50">
             <div className="flex items-center gap-2">
               <label className="text-xs text-neutral-400 uppercase font-bold">Desde:</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
-                className="bg-neutral-700 border border-neutral-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formatDateForInput(dateFrom)}
+                  onChange={e => setDateFrom(parseDateFromUI(e.target.value))}
+                  placeholder="dd/mm/yyyy"
+                  className="bg-neutral-700 border border-neutral-600 rounded-lg px-3 py-1.5 pr-10 text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={e => setDateFrom(e.target.value)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 opacity-0 cursor-pointer z-10"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-base">📅</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
               <label className="text-xs text-neutral-400 uppercase font-bold">Hasta:</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-                className="bg-neutral-700 border border-neutral-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formatDateForInput(dateTo)}
+                  onChange={e => setDateTo(parseDateFromUI(e.target.value))}
+                  placeholder="dd/mm/yyyy"
+                  className="bg-neutral-700 border border-neutral-600 rounded-lg px-3 py-1.5 pr-10 text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={e => setDateTo(e.target.value)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 opacity-0 cursor-pointer z-10"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-base">📅</span>
+              </div>
             </div>
 
             <button
