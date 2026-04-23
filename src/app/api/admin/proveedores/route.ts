@@ -21,6 +21,41 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
+    const { newFiles, ...providerData } = body;
+
+    // 1. Upload new files to Drive if present
+    if (newFiles && Array.isArray(newFiles) && newFiles.length > 0) {
+      try {
+        // Fetch building name for folder structure
+        const buildingRes = await fetch(`${supabaseUrl}/rest/v1/edificios?id=eq.${providerData.edificio_id}`, {
+          headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+        });
+        const buildings = await buildingRes.json();
+        const buildingName = buildings[0]?.nombre || "Desconocido";
+
+        const { getBuildingFolders, uploadFileToDrive, getOrCreateFolder } = await import("@/lib/googleDrive");
+        const { contractsRoot } = await getBuildingFolders(buildingName);
+        const providerFolderId = await getOrCreateFolder(`Proveedor ${providerData.nombre}`, contractsRoot);
+
+        const uploadedDocs = [];
+        for (const file of newFiles) {
+          const buffer = Buffer.from(file.content, "base64");
+          const resDrive = await uploadFileToDrive(buffer, file.name, "application/octet-stream", providerFolderId);
+          uploadedDocs.push({
+            name: file.name,
+            url: resDrive.webViewLink,
+            id: resDrive.id
+          });
+        }
+        providerData.documentos_adicionales = [
+          ...(providerData.documentos_adicionales || []),
+          ...uploadedDocs
+        ];
+      } catch (driveErr) {
+        console.error("Error uploading provider files to Drive:", driveErr);
+      }
+    }
+
     const res = await fetch(`${supabaseUrl}/rest/v1/proveedores`, {
       method: "POST",
       headers: {
@@ -29,7 +64,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         "Prefer": "return=representation"
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(providerData),
     });
 
     if (!res.ok) {

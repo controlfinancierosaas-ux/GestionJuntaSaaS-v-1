@@ -53,10 +53,53 @@ function getDriveClient(): drive_v3.Drive {
   throw new Error("Missing valid Google Drive credentials in Vercel environment variables.");
 }
 
+export async function getOrCreateFolder(name: string, parentId?: string): Promise<string> {
+  const drive = getDriveClient();
+  const parent = parentId || FOLDER_ID;
+  
+  // 1. Buscar si ya existe
+  const res = await drive.files.list({
+    q: `name = '${name}' and '${parent}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    fields: 'files(id)',
+    spaces: 'drive',
+  });
+
+  if (res.data.files && res.data.files.length > 0) {
+    return res.data.files[0].id!;
+  }
+
+  // 2. Crear si no existe
+  const createRes = await drive.files.create({
+    requestBody: {
+      name: name,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parent],
+    },
+    fields: 'id',
+  });
+
+  return createRes.data.id!;
+}
+
+export async function getBuildingFolders(buildingName: string) {
+  const rootId = await getOrCreateFolder(`Edificio ${buildingName}`);
+  const reportsRoot = await getOrCreateFolder("Documentos uploaded reports", rootId);
+  const contractsRoot = await getOrCreateFolder("Documentos Contratos con proveedores", rootId);
+  
+  return {
+    rootId,
+    reportsRoot,
+    contractsRoot,
+    recibidos: await getOrCreateFolder("Documentos recibidos reportes", reportsRoot),
+    juntaReports: await getOrCreateFolder("Documentos uploaded por Junta reports", reportsRoot)
+  };
+}
+
 export async function uploadFileToDrive(
   fileBuffer: Buffer,
   fileName: string,
-  mimeType: string = 'application/octet-stream'
+  mimeType: string = 'application/octet-stream',
+  customFolderId?: string
 ): Promise<{ id: string; webViewLink: string }> {
   console.log(`[Upload] Processing file: ${fileName}`);
   
@@ -66,7 +109,7 @@ export async function uploadFileToDrive(
     const response = await drive.files.create({
       requestBody: {
         name: fileName,
-        parents: [FOLDER_ID],
+        parents: [customFolderId || FOLDER_ID],
       },
       media: {
         mimeType,

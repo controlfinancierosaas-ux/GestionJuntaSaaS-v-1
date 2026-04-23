@@ -7,6 +7,8 @@ ALTER TABLE public.incidencias ADD COLUMN IF NOT EXISTS proveedor_asignado text;
 ALTER TABLE public.incidencias ADD COLUMN IF NOT EXISTS fecha_resolucion timestamp with time zone;
 ALTER TABLE public.incidencias ADD COLUMN IF NOT EXISTS observaciones_resolucion text;
 ALTER TABLE public.incidencias ADD COLUMN IF NOT EXISTS monto_bs numeric DEFAULT 0;
+ALTER TABLE public.incidencias ADD COLUMN IF NOT EXISTS monto_usd numeric DEFAULT 0;
+ALTER TABLE public.incidencias ADD COLUMN IF NOT EXISTS tasa_cambio numeric DEFAULT 0;
 ALTER TABLE public.incidencias ADD COLUMN IF NOT EXISTS documentos_junta jsonb DEFAULT '[]';
 ALTER TABLE public.incidencias ADD COLUMN IF NOT EXISTS enviar_email_resuelto boolean DEFAULT false;
 

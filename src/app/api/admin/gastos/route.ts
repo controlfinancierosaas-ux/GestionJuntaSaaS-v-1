@@ -57,6 +57,29 @@ export async function POST(req: Request) {
     const createdGasto = await res.json();
     const gastoId = createdGasto[0].id;
 
+    // 1.1. Si el método de pago es Caja Chica, registrar el movimiento de salida
+    if (gastoData.metodo_pago_sugerido === "Caja Chica") {
+      await fetch(`${supabaseUrl}/rest/v1/caja_chica`, {
+        method: "POST",
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          edificio_id,
+          concepto: `Gasto: ${gastoData.concepto_descripcion || "Sin descripción"}`,
+          tipo: "Egreso",
+          monto: gastoData.monto_usd || 0,
+          monto_usd: gastoData.monto_usd || 0,
+          monto_bs: gastoData.monto_bs || 0,
+          tasa_bcv: gastoData.tasa_bcv_factura || 0,
+          fecha: gastoData.fecha_factura || new Date().toISOString(),
+          notas: `Vinculado a Gasto ID: ${gastoId}`
+        }),
+      });
+    }
+
     // 2. Si hay items de inventario, insertarlos vinculados al gasto
     if (items && Array.isArray(items) && items.length > 0) {
       const movimientos = items.map((item: any) => ({

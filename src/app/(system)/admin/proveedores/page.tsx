@@ -34,12 +34,20 @@ export default function ProveedoresPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-white">Directorio de Proveedores</h1>
-          <button
-            onClick={() => router.push("/admin/proveedores/nuevo")}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors"
-          >
-            + Nuevo Proveedor
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={() => router.push("/admin/proveedores/reporte-recurrentes")}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+            >
+              📅 Cronograma de Servicios
+            </button>
+            <button
+              onClick={() => router.push("/admin/proveedores/nuevo")}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors"
+            >
+              + Nuevo Proveedor
+            </button>
+          </div>
         </div>
 
         <div className="bg-neutral-800 rounded-lg p-4 mb-6 space-y-4 border border-neutral-700">

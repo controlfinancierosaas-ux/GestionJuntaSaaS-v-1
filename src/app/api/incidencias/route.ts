@@ -109,8 +109,25 @@ export async function POST(request: Request) {
     }
     // ------------------------------------
 
-    // URL de la carpeta de Drive donde se guardan los documentos
-    const driveFolderUrl = "https://drive.google.com/drive/folders/1EUuaVuTMwv6Uitj57MZkF0t-UysqO0R_";
+    // --- LÓGICA DE CARPETAS DRIVE ---
+    let targetFolderId = "";
+    const FOLDER_ID = process.env.GOOGLE_FOLDER_ID || '1EUuaVuTMwv6Uitj57MZkF0t-UysqO0R_';
+    let driveFolderUrl = `https://drive.google.com/drive/folders/${FOLDER_ID}`;
+
+    try {
+      const buildingRes = await fetch(`${supabaseUrl}/rest/v1/edificios?id=eq.${data.edificio_id}`, {
+        headers: { "apikey": supabaseKey, "Authorization": authHeader },
+      });
+      const buildings = await buildingRes.json();
+      const buildingName = buildings[0]?.nombre || "Desconocido";
+      
+      const { recibidos } = await import("@/lib/googleDrive").then(m => m.getBuildingFolders(buildingName));
+      targetFolderId = recibidos;
+      driveFolderUrl = `https://drive.google.com/drive/folders/${targetFolderId}`;
+    } catch (e) {
+      console.error("Error creating folder structure:", e);
+    }
+    // ------------------------------------
     
     // Parsear los documentos si existen
     let documentosArray: string[] = [];
@@ -135,7 +152,7 @@ export async function POST(request: Request) {
           const mimeType = getMimeType(file.name);
           
           try {
-            const result = await uploadFileToDrive(buffer, file.name, mimeType);
+            const result = await uploadFileToDrive(buffer, file.name, mimeType, targetFolderId);
             return {
               name: file.name,
               webViewLink: result.webViewLink,

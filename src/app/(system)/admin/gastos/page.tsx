@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { formatDate } from "@/lib/formatters";
 
 export default function GastosPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function GastosPage() {
     proveedor_id: "",
     posee_comprobante: true,
     fecha_factura: new Date().toISOString().split('T')[0],
+    fecha_ejecucion: new Date().toISOString().split('T')[0],
     numero_comprobante: "",
     concepto_descripcion: "",
     monto_usd: "",
@@ -39,10 +41,55 @@ export default function GastosPage() {
   };
 
   const [nuevoGasto, setNuevaGasto] = useState(initialGasto);
+  const [tasaHoy, setTasaHoy] = useState<number>(0);
 
   useEffect(() => {
     fetchData();
+    fetch("/api/cron/tasas")
+      .then(res => res.json())
+      .then(data => {
+        if (data.tasas?.dolar) {
+          setTasaHoy(data.tasas.dolar);
+          setNuevaGasto(prev => ({ ...prev, tasa_bcv_factura: data.tasas.dolar.toString() }));
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const handleBsChange = (val: string) => {
+    const bs = parseFloat(val) || 0;
+    const tasa = parseFloat(nuevoGasto.tasa_bcv_factura as string) || tasaHoy || 1;
+    const usd = bs / tasa;
+    setNuevaGasto({
+      ...nuevoGasto,
+      monto_bs: val,
+      monto_usd: usd.toFixed(2),
+      tasa_bcv_factura: tasa.toString()
+    });
+  };
+
+  const handleUsdChange = (val: string) => {
+    const usd = parseFloat(val) || 0;
+    const tasa = parseFloat(nuevoGasto.tasa_bcv_factura as string) || tasaHoy || 1;
+    const bs = usd * tasa;
+    setNuevaGasto({
+      ...nuevoGasto,
+      monto_usd: val,
+      monto_bs: bs.toFixed(2),
+      tasa_bcv_factura: tasa.toString()
+    });
+  };
+
+  const handleTasaChange = (val: string) => {
+    const tasa = parseFloat(val) || 0;
+    const bs = parseFloat(nuevoGasto.monto_bs as string) || 0;
+    const usd = tasa > 0 ? bs / tasa : 0;
+    setNuevaGasto({
+      ...nuevoGasto,
+      tasa_bcv_factura: val,
+      monto_usd: usd.toFixed(2)
+    });
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -141,7 +188,7 @@ export default function GastosPage() {
             <tbody>
               {filtered.map(g => (
                 <tr key={g.id} className="border-t border-neutral-700 hover:bg-neutral-750">
-                  <td className="p-3 text-white">{g.fecha_factura}</td>
+                  <td className="p-3 text-white">{formatDate(g.fecha_factura)}</td>
                   <td className="p-3 text-emerald-400 font-bold">{g.proveedores?.nombre}</td>
                   <td className="p-3 text-neutral-400 truncate max-w-xs">{g.concepto_descripcion}</td>
                   <td className="p-3 text-right font-mono">${g.monto_usd}</td>
@@ -206,16 +253,24 @@ export default function GastosPage() {
                   <input type="date" value={nuevoGasto.fecha_factura} onChange={e => setNuevaGasto({...nuevoGasto, fecha_factura: e.target.value})} className="w-full bg-neutral-800 p-2 rounded text-white" />
                 </div>
                 <div>
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Fecha Ejecución</label>
+                  <input type="date" value={nuevoGasto.fecha_ejecucion} onChange={e => setNuevaGasto({...nuevoGasto, fecha_ejecucion: e.target.value})} className="w-full bg-neutral-800 p-2 rounded text-white" />
+                </div>
+                <div>
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Nº Comprobante</label>
                   <input type="text" value={nuevoGasto.numero_comprobante} onChange={e => setNuevaGasto({...nuevoGasto, numero_comprobante: e.target.value})} className="w-full bg-neutral-800 p-2 rounded text-white" placeholder="S/N" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Monto USD</label>
-                  <input type="number" step="0.01" value={nuevoGasto.monto_usd} onChange={e => setNuevaGasto({...nuevoGasto, monto_usd: e.target.value})} className="w-full bg-neutral-800 p-2 rounded text-white" />
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1 text-emerald-400 font-bold">Monto Bs.</label>
+                  <input type="number" step="0.01" value={nuevoGasto.monto_bs} onChange={e => handleBsChange(e.target.value)} className="w-full bg-neutral-800 p-2 rounded text-white" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Tasa BCV</label>
-                  <input type="number" step="0.0001" value={nuevoGasto.tasa_bcv_factura} onChange={e => setNuevaGasto({...nuevoGasto, tasa_bcv_factura: e.target.value})} className="w-full bg-neutral-800 p-2 rounded text-white" />
+                  <input type="number" step="0.0001" value={nuevoGasto.tasa_bcv_factura} onChange={e => handleTasaChange(e.target.value)} className="w-full bg-neutral-800 p-2 rounded text-white font-bold text-emerald-400" />
+                </div>
+                <div className="md:col-start-3">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Monto USD</label>
+                  <input type="number" step="0.01" value={nuevoGasto.monto_usd} onChange={e => handleUsdChange(e.target.value)} className="w-full bg-neutral-800 p-2 rounded text-white" />
                 </div>
               </div>
 

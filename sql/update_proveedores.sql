@@ -11,6 +11,16 @@ ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS copia_rif_url text;
 ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS clausula_ajuste text;
 ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS aviso_finalizacion text;
 
+-- Nuevos campos para Pago Móvil y Contacto Adicional
+ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS pm_banco text;
+ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS pm_documento_identidad text;
+ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS pm_telefono_movil text;
+ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS telefono_fijo text;
+ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS email2 text;
+ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS whatsapp text;
+ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS pagina_web text;
+ALTER TABLE public.proveedores ADD COLUMN IF NOT EXISTS documentos_adicionales jsonb DEFAULT '[]';
+
 -- Tabla de historial de evaluaciones
 CREATE TABLE IF NOT EXISTS public.evaluaciones_proveedores (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,

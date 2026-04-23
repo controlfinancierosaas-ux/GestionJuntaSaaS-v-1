@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { formatDate, formatDateTime, formatPhone } from "@/lib/formatters";
 
 const ESTATUS_OPTIONS = ["Activa", "En Evaluación", "En Ejecución", "Asignada", "Pospuesta", "Descartada", "Resuelta", "Archivada"];
 
@@ -19,6 +20,8 @@ export default function IncidentDetailPage() {
   const [incident, setIncident] = useState<any>(null);
   const [newFiles, setNewFiles] = useState<FileItem[]>([]);
   const [proveedores, setProveedores] = useState<any[]>([]);
+  const [config, setConfig] = useState<any>(null);
+  const [tasaHoy, setTasaHoy] = useState<number>(0);
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [showGastoModal, setShowGastoModal] = useState(false);
   const [evaluacion, setEvaluacion] = useState({
@@ -50,7 +53,124 @@ export default function IncidentDetailPage() {
       .then(res => res.json())
       .then(data => setProveedores(data))
       .catch(() => {});
+
+    fetch("/api/admin/config")
+      .then(res => res.json())
+      .then(data => setConfig(data))
+      .catch(() => {});
+
+    fetch("/api/cron/tasas")
+      .then(res => res.json())
+      .then(data => {
+        if (data.tasas?.dolar) {
+          setTasaHoy(data.tasas.dolar);
+        }
+      })
+      .catch(() => {});
   }, [params.id]);
+
+  useEffect(() => {
+    if (incident && !incident.tasa_cambio && tasaHoy > 0) {
+      setIncident({ ...incident, tasa_cambio: tasaHoy });
+    }
+  }, [incident, tasaHoy]);
+
+  const handleMontoBsChange = (val: string) => {
+    const bs = parseFloat(val) || 0;
+    const tasa = incident.tasa_cambio || tasaHoy || 1;
+    const usd = bs / tasa;
+    setIncident({
+      ...incident,
+      monto_bs: bs,
+      monto_usd: Number(usd.toFixed(2))
+    });
+  };
+
+  const handleMontoUsdChange = (val: string) => {
+    const usd = parseFloat(val) || 0;
+    const tasa = incident.tasa_cambio || tasaHoy || 1;
+    const bs = usd * tasa;
+    setIncident({
+      ...incident,
+      monto_usd: usd,
+      monto_bs: Number(bs.toFixed(2))
+    });
+  };
+
+  const handleTasaChange = (val: string) => {
+    const tasa = parseFloat(val) || 0;
+    const bs = incident.monto_bs || 0;
+    const usd = tasa > 0 ? bs / tasa : 0;
+    setIncident({
+      ...incident,
+      tasa_cambio: tasa,
+      monto_usd: Number(usd.toFixed(2))
+    });
+  };
+
+  const handleCreateProvider = async () => {
+    if (!incident.proveedor_asignado) return;
+    if (!confirm(`¿Desea crear el proveedor "${incident.proveedor_asignado}" con datos básicos?`)) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/proveedores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: incident.proveedor_asignado,
+          categoria: "Por definir",
+          estatus: "Activo"
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newProvider = Array.isArray(data) ? data[0] : data;
+        setProveedores([...proveedores, newProvider]);
+        setIncident({ ...incident, proveedor_id: newProvider.id });
+        alert("Proveedor creado correctamente");
+      }
+    } catch (error) {
+      alert("Error al crear proveedor");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleGastoBsChange = (val: string) => {
+    const bs = parseFloat(val) || 0;
+    const tasa = parseFloat(gastoData.tasa_bcv_factura) || tasaHoy || 1;
+    const usd = bs / tasa;
+    setGastoData({
+      ...gastoData,
+      monto_bs: val,
+      monto_usd: usd.toFixed(2),
+      tasa_bcv_factura: tasa.toString()
+    });
+  };
+
+  const handleGastoUsdChange = (val: string) => {
+    const usd = parseFloat(val) || 0;
+    const tasa = parseFloat(gastoData.tasa_bcv_factura) || tasaHoy || 1;
+    const bs = usd * tasa;
+    setGastoData({
+      ...gastoData,
+      monto_usd: val,
+      monto_bs: bs.toFixed(2),
+      tasa_bcv_factura: tasa.toString()
+    });
+  };
+
+  const handleGastoTasaChange = (val: string) => {
+    const tasa = parseFloat(val) || 0;
+    const bs = parseFloat(gastoData.monto_bs) || 0;
+    const usd = tasa > 0 ? bs / tasa : 0;
+    setGastoData({
+      ...gastoData,
+      tasa_bcv_factura: val,
+      monto_usd: usd.toFixed(2)
+    });
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -145,6 +265,12 @@ export default function IncidentDetailPage() {
       setShowEvalModal(false);
       // 3. Preguntar si quiere añadir gasto
       if (confirm("Incidencia resuelta. ¿Desea registrar la factura o gasto asociado ahora?")) {
+        setGastoData({
+          ...gastoData,
+          monto_bs: incident.monto_bs?.toString() || "",
+          monto_usd: incident.monto_usd?.toString() || "",
+          tasa_bcv_factura: incident.tasa_cambio?.toString() || tasaHoy?.toString() || ""
+        });
         setShowGastoModal(true);
       } else {
         alert("Incidencia marcada como resuelta correctamente.");
@@ -211,9 +337,15 @@ export default function IncidentDetailPage() {
             </button>
             <h1 className="text-2xl font-bold">Gestión de Incidencia</h1>
             <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2">
-              <p className="text-emerald-400 font-mono font-bold text-sm">Categoría: {incident.codigo_personalizado || "N/A"}</p>
-              <p className="text-blue-400 font-mono text-sm">Sistema: {incident.numero_sistema || "N/A"}</p>
-              <p className="text-purple-400 font-mono text-sm">Manual: {incident.codigo_manual || "No asignado"}</p>
+              {(!config?.columnas_visibles_incidencias || config.columnas_visibles_incidencias.includes("categoria")) && (
+                <p className="text-emerald-400 font-mono font-bold text-sm">Nro. Ticket: {incident.codigo_personalizado || "N/A"}</p>
+              )}
+              {(!config?.columnas_visibles_incidencias || config.columnas_visibles_incidencias.includes("sistema")) && (
+                <p className="text-blue-400 font-mono text-sm">Nro. Incidencia: {incident.numero_sistema || "N/A"}</p>
+              )}
+              {(!config?.columnas_visibles_incidencias || config.columnas_visibles_incidencias.includes("manual")) && (
+                <p className="text-purple-400 font-mono text-sm">Nro. Reporte: {incident.codigo_manual || "No asignado"}</p>
+              )}
             </div>
           </div>
           <div className="flex gap-3">
@@ -246,11 +378,11 @@ export default function IncidentDetailPage() {
               </div>
               <div>
                 <label className="block text-sm text-neutral-400">Teléfono</label>
-                <input value={incident.telefono_contacto || ""} readOnly className="w-full bg-neutral-700 p-2 rounded text-neutral-300" />
+                <input value={formatPhone(incident.telefono_contacto) || ""} readOnly className="w-full bg-neutral-700 p-2 rounded text-neutral-300" />
               </div>
               <div>
                 <label className="block text-sm text-neutral-400">Fecha de Reporte</label>
-                <input value={incident.created_at?.split("T")[0] || ""} readOnly className="w-full bg-neutral-700 p-2 rounded text-neutral-300" />
+                <input value={formatDateTime(incident.created_at)} readOnly className="w-full bg-neutral-700 p-2 rounded text-neutral-300" />
               </div>
             </div>
           </div>
@@ -306,23 +438,34 @@ export default function IncidentDetailPage() {
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Proveedor Asignado</label>
-              <select
-                value={incident.proveedor_id || ""}
+              <input
+                list="proveedores-list"
+                value={incident.proveedor_asignado || ""}
                 onChange={e => {
-                  const p = proveedores.find(x => x.id === e.target.value);
+                  const p = proveedores.find(x => x.nombre === e.target.value);
                   setIncident({
                     ...incident, 
-                    proveedor_id: e.target.value || null,
-                    proveedor_asignado: p ? p.nombre : ""
+                    proveedor_id: p ? p.id : incident.proveedor_id,
+                    proveedor_asignado: e.target.value
                   });
                 }}
                 className="w-full bg-neutral-700 p-2 rounded text-white"
-              >
-                <option value="">Sin asignar</option>
+                placeholder="Buscar o escribir nombre..."
+              />
+              <datalist id="proveedores-list">
                 {proveedores.map(p => (
-                  <option key={p.id} value={p.id}>{p.nombre} ({p.categoria})</option>
+                  <option key={p.id} value={p.nombre}>{p.categoria}</option>
                 ))}
-              </select>
+              </datalist>
+              {incident.proveedor_asignado && !proveedores.find(p => p.nombre === incident.proveedor_asignado) && (
+                <button 
+                  type="button"
+                  onClick={handleCreateProvider}
+                  className="text-xs text-blue-400 mt-1 hover:underline"
+                >
+                  + Crear nuevo proveedor: {incident.proveedor_asignado}
+                </button>
+              )}
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Fecha de Asignación</label>
@@ -346,10 +489,33 @@ export default function IncidentDetailPage() {
               <label className="block text-sm text-neutral-400 mb-1">Monto (Bs.)</label>
               <input
                 type="number"
+                step="0.01"
                 value={incident.monto_bs || 0}
-                onChange={e => setIncident({...incident, monto_bs: Number(e.target.value)})}
+                onChange={e => handleMontoBsChange(e.target.value)}
                 placeholder="0.00"
                 className="w-full bg-neutral-700 p-2 rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1">Monto (USD$)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={incident.monto_usd || 0}
+                onChange={e => handleMontoUsdChange(e.target.value)}
+                placeholder="0.00"
+                className="w-full bg-neutral-700 p-2 rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1">Tasa de Cambio</label>
+              <input
+                type="number"
+                step="0.0001"
+                value={incident.tasa_cambio || 0}
+                onChange={e => handleTasaChange(e.target.value)}
+                placeholder="0.0000"
+                className="w-full bg-neutral-700 p-2 rounded text-emerald-400 font-bold"
               />
             </div>
             <div>
@@ -609,7 +775,7 @@ export default function IncidentDetailPage() {
                     step="0.01"
                     required
                     value={gastoData.monto_usd}
-                    onChange={e => setGastoData({...gastoData, monto_usd: e.target.value})}
+                    onChange={e => handleGastoUsdChange(e.target.value)}
                     className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
                   />
                 </div>
@@ -619,8 +785,8 @@ export default function IncidentDetailPage() {
                     type="number"
                     step="0.0001"
                     value={gastoData.tasa_bcv_factura}
-                    onChange={e => setGastoData({...gastoData, tasa_bcv_factura: e.target.value})}
-                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
+                    onChange={e => handleGastoTasaChange(e.target.value)}
+                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white font-bold text-emerald-400"
                   />
                 </div>
                 <div>
@@ -629,7 +795,7 @@ export default function IncidentDetailPage() {
                     type="number"
                     step="0.01"
                     value={gastoData.monto_bs}
-                    onChange={e => setGastoData({...gastoData, monto_bs: e.target.value})}
+                    onChange={e => handleGastoBsChange(e.target.value)}
                     className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
                   />
                 </div>

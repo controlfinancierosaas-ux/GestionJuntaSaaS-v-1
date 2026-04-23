@@ -194,7 +194,7 @@ export default function IncidenciasPage() {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Teléfono *</label>
-                <input type="tel" name="telefono" required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 text-white" placeholder="0412-1234567" />
+                <input type="tel" name="telefono" required className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:border-emerald-500 text-white" placeholder="+58-412-1234567" defaultValue="+58-" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Email</label>

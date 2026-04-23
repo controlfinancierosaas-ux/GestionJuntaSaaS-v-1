@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.gastos_facturas (
     -- Datos de la Factura/Nota
     fecha_registro timestamp with time zone DEFAULT now(),
     fecha_factura date,
+    fecha_ejecucion date,
     numero_comprobante text, -- Factura o Nota de Entrega
     concepto_descripcion text,
     

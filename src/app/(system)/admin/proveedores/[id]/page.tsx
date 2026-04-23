@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 const CATEGORIES = ["Ascensores", "Bombas de Agua", "CCTV / Cámaras", "Electricidad", "Jardinería", "Limpieza", "Pintura", "Plomería", "Portones", "Otros"];
@@ -37,7 +37,16 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
     clausula_ajuste: "",
     aviso_finalizacion: "1 mes antes",
     documento_contrato_url: "",
-    copia_rif_url: ""
+    copia_rif_url: "",
+    // Nuevos campos para Pago Móvil y Contacto Adicional
+    pm_banco: "",
+    pm_documento_identidad: "",
+    pm_telefono_movil: "",
+    telefono_fijo: "",
+    email2: "",
+    whatsapp: "",
+    pagina_web: "",
+    documentos_adicionales: [] as any[]
   });
 
   const [evaluaciones, setEvaluaciones] = useState<any[]>([]);
@@ -48,8 +57,11 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
     comentarios: "",
     evaluado_por: ""
   });
+  const [newFiles, setNewFiles] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // ...
     // Cargar sesión para obtener edificio_id
     fetch("/api/auth/me")
       .then(res => res.json())
@@ -84,6 +96,39 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
     }
   }, [id, isNew]);
 
+  const handleAddFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const currentDocs = formData.documentos_adicionales || [];
+    if (currentDocs.length + newFiles.length + files.length > 10) {
+      alert("Máximo 10 archivos permitidos");
+      return;
+    }
+
+    const newFilesArr: any[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const base64 = await fileToBase64(file);
+      newFilesArr.push({ 
+        name: file.name, 
+        size: file.size, 
+        content: base64.replace(/^data:[^;]+;base64,/, ""),
+        addedAt: new Date().toISOString()
+      });
+    }
+    setNewFiles([...newFiles, ...newFilesArr]);
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -96,6 +141,7 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
       const dataToSave = {
         ...formData,
         edificio_id: edificioId,
+        newFiles,
         // Sanitizar campos numéricos
         monto_canon_usd: formData.monto_canon_usd === "" ? null : parseFloat(formData.monto_canon_usd),
         monto_canon_bs: formData.monto_canon_bs === "" ? null : parseFloat(formData.monto_canon_bs),
@@ -235,6 +281,11 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
                 >
                   <option value="Activo">Activo</option>
                   <option value="Inactivo">Inactivo</option>
+                  <option value="Suspendido">Suspendido</option>
+                  <option value="En revisión/pendiente">En revisión/pendiente</option>
+                  <option value="No elegible">No elegible</option>
+                  <option value="Vencido">Vencido</option>
+                  <option value="Vetado/lista Negra">Vetado/lista Negra</option>
                 </select>
               </div>
             </div>
@@ -365,24 +416,57 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
             <h2 className="text-lg font-semibold text-emerald-500 mb-4 border-b border-neutral-700 pb-2">Contacto y Ubicación</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">Teléfono de Contacto</label>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">Teléfono Móvil (WhatsApp)</label>
                 <input
                   type="text"
-                  value={formData.telefono}
-                  onChange={e => setFormData({ ...formData, telefono: e.target.value })}
+                  value={formData.telefono || "+58-"}
+                  onChange={e => setFormData({ ...formData, telefono: e.target.value, whatsapp: e.target.value })}
                   className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
-                  placeholder="0412-1234567"
+                  placeholder="+58-412-1234567"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-2">Correo Electrónico</label>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">Teléfono Fijo</label>
+                <input
+                  type="text"
+                  value={formData.telefono_fijo || "+58-"}
+                  onChange={e => setFormData({ ...formData, telefono_fijo: e.target.value })}
+                  className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                  placeholder="+58-212-1234567"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">Correo Electrónico 1</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
                   placeholder="contacto@empresa.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">Correo Electrónico 2 (Opcional)</label>
+                <input
+                  type="email"
+                  value={formData.email2}
+                  onChange={e => setFormData({ ...formData, email2: e.target.value })}
+                  className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                  placeholder="otro@empresa.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">Página Web</label>
+                <input
+                  type="url"
+                  value={formData.pagina_web}
+                  onChange={e => setFormData({ ...formData, pagina_web: e.target.value })}
+                  className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                  placeholder="https://www.empresa.com"
                 />
               </div>
 
@@ -402,7 +486,9 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
           {/* Sección 3: Datos Bancarios */}
           <div>
             <h2 className="text-lg font-semibold text-emerald-500 mb-4 border-b border-neutral-700 pb-2">Información de Pagos</h2>
-            <div className="grid md:grid-cols-2 gap-6">
+            
+            <h3 className="text-sm font-bold text-neutral-400 mb-4 uppercase tracking-wider italic">Cuenta Bancaria Principal</h3>
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
               <div>
                 <label className="block text-sm font-medium text-neutral-400 mb-2">Banco</label>
                 <input
@@ -437,6 +523,99 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
                   placeholder="0102-XXXX-XX-XXXXXXXXXX"
                 />
               </div>
+            </div>
+
+            <h3 className="text-sm font-bold text-neutral-400 mb-4 uppercase tracking-wider italic">Datos para Pago Móvil</h3>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">Banco Pago Móvil</label>
+                <input
+                  type="text"
+                  value={formData.pm_banco}
+                  onChange={e => setFormData({ ...formData, pm_banco: e.target.value })}
+                  className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                  placeholder="Banco"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">CI / RIF Pago Móvil</label>
+                <input
+                  type="text"
+                  value={formData.pm_documento_identidad}
+                  onChange={e => setFormData({ ...formData, pm_documento_identidad: e.target.value })}
+                  className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                  placeholder="V-12345678"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-2">Teléfono Pago Móvil</label>
+                <input
+                  type="text"
+                  value={formData.pm_telefono_movil || "+58-"}
+                  onChange={e => setFormData({ ...formData, pm_telefono_movil: e.target.value })}
+                  className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                  placeholder="+58-4XX-XXXXXXX"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-400 mb-2">Documentos Adicionales (Máx. 10)</label>
+            <div className="flex gap-4 items-center mb-4">
+              <input
+                type="file"
+                multiple
+                ref={fileInputRef}
+                onChange={handleAddFiles}
+                className="hidden"
+                id="doc-adicionales"
+              />
+              <label
+                htmlFor="doc-adicionales"
+                className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg cursor-pointer text-sm"
+              >
+                + Cargar Archivos
+              </label>
+              <span className="text-xs text-neutral-500">
+                {((formData.documentos_adicionales?.length || 0) + newFiles.length)} / 10 archivos
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {/* Archivos ya guardados */}
+              {formData.documentos_adicionales?.map((doc: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between p-2 bg-neutral-900/30 rounded border border-neutral-700">
+                  <span className="text-sm text-neutral-300 flex items-center gap-2">
+                    📄 <a href={doc.url || "#"} target="_blank" className="hover:underline">{doc.name}</a>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = formData.documentos_adicionales.filter((_: any, i: number) => i !== idx);
+                      setFormData({ ...formData, documentos_adicionales: updated });
+                    }}
+                    className="text-red-400 hover:text-red-300 text-xs"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+              {/* Archivos nuevos por subir */}
+              {newFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 bg-emerald-900/10 rounded border border-emerald-500/30">
+                  <span className="text-sm text-emerald-300 flex items-center gap-2">
+                    🆕 {file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setNewFiles(newFiles.filter((_, i) => i !== idx))}
+                    className="text-red-400 hover:text-red-300 text-xs"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 

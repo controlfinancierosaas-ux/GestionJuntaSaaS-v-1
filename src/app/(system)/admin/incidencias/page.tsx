@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { formatDate } from "@/lib/formatters";
 
 const FILTERS = ["Todos", "Activa", "En Evaluación", "En Ejecución", "Asignada", "Pospuesta", "Descartada", "Resuelta", "Archivada"];
 
@@ -201,9 +202,9 @@ function IncidenciasContent() {
               <table className="w-full">
                 <thead className="bg-neutral-700">
                   <tr>
-                    {columnasVisibles.includes("categoria") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Código</th>}
-                    {columnasVisibles.includes("sistema") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Nº Sistema</th>}
-                    {columnasVisibles.includes("manual") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Cód. Manual</th>}
+                    {columnasVisibles.includes("categoria") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Nro. Ticket</th>}
+                    {columnasVisibles.includes("sistema") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Nro. Incidencia</th>}
+                    {columnasVisibles.includes("manual") && <th className="p-3 text-left text-sm font-medium text-neutral-300">Nro. Reporte</th>}
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Fecha</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Tipo</th>
                     <th className="p-3 text-left text-sm font-medium text-neutral-300">Unidad</th>
@@ -224,7 +225,7 @@ function IncidenciasContent() {
                       {columnasVisibles.includes("manual") && (
                         <td className="p-3 text-sm font-mono text-purple-400 text-xs">{inc.codigo_manual || "-"}</td>
                       )}
-                      <td className="p-3 text-sm">{inc.created_at?.split("T")[0]}</td>
+                      <td className="p-3 text-sm whitespace-nowrap">{formatDate(inc.created_at)}</td>
                       <td className="p-3 text-sm">{inc.area_afectada}</td>
                       <td className="p-3 text-sm text-neutral-400">{inc.unidad_codigo}</td>
                       <td className="p-3">

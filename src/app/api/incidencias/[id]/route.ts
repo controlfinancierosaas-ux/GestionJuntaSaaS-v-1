@@ -72,6 +72,39 @@ export async function PATCH(
     const updateData: Record<string, any> = { ...body };
     delete updateData.enviar_email_resuelto;
 
+    // --- LÓGICA DE CARPETAS DRIVE PARA DOCUMENTOS DE JUNTA ---
+    if (updateData.documentos_junta && Array.isArray(updateData.documentos_junta)) {
+      const { getBuildingFolders, uploadFileToDrive } = await import("@/lib/googleDrive");
+      
+      // Necesitamos el edificio_id
+      const incidentRes = await fetch(`${supabaseUrl}/rest/v1/incidencias?id=eq.${id}&select=edificio_id`, {
+        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+      });
+      const incidentInfo = await incidentRes.json();
+      const edificio_id = incidentInfo[0]?.edificio_id;
+
+      if (edificio_id) {
+        const buildingRes = await fetch(`${supabaseUrl}/rest/v1/edificios?id=eq.${edificio_id}`, {
+          headers: { "apikey": supabaseKey, "Authorization": `Bearer ${apiKey}` },
+        });
+        const buildings = await buildingRes.json();
+        const buildingName = buildings[0]?.nombre || "Desconocido";
+        
+        const { juntaReports } = await getBuildingFolders(buildingName);
+
+        for (const doc of updateData.documentos_junta) {
+          if (doc.content) { // Si tiene content es que es nuevo por subir
+            const buffer = Buffer.from(doc.content, "base64");
+            const resDrive = await uploadFileToDrive(buffer, doc.name, "application/octet-stream", juntaReports);
+            doc.url = resDrive.webViewLink;
+            doc.drive_id = resDrive.id;
+            delete doc.content; // No guardar el base64 en la DB
+          }
+        }
+      }
+    }
+    // ---------------------------------------------------------
+
     if (updateData.estatus === "Resuelta" && !updateData.fecha_resolucion) {
       updateData.fecha_resolucion = new Date().toISOString();
     }
