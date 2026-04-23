@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { formatDate, formatDateTime, formatPhone } from "@/lib/formatters";
+import { formatDate, formatDateTime, formatPhone, formatDateForInput, parseDateFromUI } from "@/lib/formatters";
 
 const ESTATUS_OPTIONS = ["Activa", "En Evaluación", "En Ejecución", "Asignada", "Pospuesta", "Descartada", "Resuelta", "Archivada"];
 
@@ -480,18 +480,20 @@ export default function IncidentDetailPage() {
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Fecha de Asignación</label>
               <input
-                type="date"
-                value={incident.fecha_asignacion?.split("T")[0] || ""}
-                onChange={e => setIncident({...incident, fecha_asignacion: e.target.value})}
+                type="text"
+                value={formatDateForInput(incident.fecha_asignacion)}
+                onChange={e => setIncident({...incident, fecha_asignacion: parseDateFromUI(e.target.value)})}
+                placeholder="dd/mm/yyyy"
                 className="w-full bg-neutral-700 p-2 rounded"
               />
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Fecha de Resolución</label>
               <input
-                type="date"
-                value={incident.fecha_resolucion?.split("T")[0] || ""}
-                onChange={e => setIncident({...incident, fecha_resolucion: e.target.value})}
+                type="text"
+                value={formatDateForInput(incident.fecha_resolucion)}
+                onChange={e => setIncident({...incident, fecha_resolucion: parseDateFromUI(e.target.value)})}
+                placeholder="dd/mm/yyyy"
                 className="w-full bg-neutral-700 p-2 rounded"
               />
             </div>
@@ -759,21 +761,23 @@ export default function IncidentDetailPage() {
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Fecha Factura</label>
                   <input
-                    type="date"
+                    type="text"
                     required
-                    value={gastoData.fecha_factura}
-                    onChange={e => setGastoData({...gastoData, fecha_factura: e.target.value})}
+                    value={formatDateForInput(gastoData.fecha_factura)}
+                    onChange={e => setGastoData({...gastoData, fecha_factura: parseDateFromUI(e.target.value)})}
                     className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
+                    placeholder="dd/mm/yyyy"
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Fecha Ejecución</label>
                   <input
-                    type="date"
+                    type="text"
                     required
-                    value={gastoData.fecha_ejecucion}
-                    onChange={e => setGastoData({...gastoData, fecha_ejecucion: e.target.value})}
+                    value={formatDateForInput(gastoData.fecha_ejecucion)}
+                    onChange={e => setGastoData({...gastoData, fecha_ejecucion: parseDateFromUI(e.target.value)})}
                     className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
+                    placeholder="dd/mm/yyyy"
                   />
                 </div>
                 <div>

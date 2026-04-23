@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { formatDate } from "@/lib/formatters";
 
 export default function CajaChicaPage() {
   const [movimientos, setMovimientos] = useState<any[]>([]);
@@ -118,7 +119,7 @@ export default function CajaChicaPage() {
             <tbody className="divide-y divide-neutral-700">
               {movimientos.map(m => (
                 <tr key={m.id} className="hover:bg-neutral-750 transition-colors">
-                  <td className="p-4 text-neutral-400 font-mono text-xs">{new Date(m.fecha).toLocaleDateString()}</td>
+                  <td className="p-4 text-neutral-400 font-mono text-xs">{formatDate(m.fecha)}</td>
                   <td className="p-4">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${m.tipo === 'Ingreso' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
                       {m.tipo}

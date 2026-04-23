@@ -27,6 +27,31 @@ export function formatDateTime(date: string | Date | null | undefined): string {
   }).toUpperCase();
 }
 
+/**
+ * Convierte una fecha en formato YYYY-MM-DD a DD/MM/YYYY para mostrar en inputs de texto
+ */
+export function formatDateForInput(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const parts = dateStr.split('T')[0].split('-');
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+/**
+ * Convierte una fecha en formato DD/MM/YYYY a YYYY-MM-DD para guardar en estado/DB
+ */
+export function parseDateFromUI(val: string): string {
+  if (!val) return "";
+  const parts = val.split('/');
+  if (parts.length !== 3) return val;
+  // Asegurar que tengan el padding correcto
+  const d = parts[0].padStart(2, '0');
+  const m = parts[1].padStart(2, '0');
+  const y = parts[2];
+  if (y.length === 2) return `20${y}-${m}-${d}`; // Manejar años de 2 dígitos si el usuario los ingresa
+  return `${y}-${m}-${d}`;
+}
+
 export function formatPhone(phone: string | null | undefined): string {
   if (!phone) return "";
   let cleaned = phone.replace(/\D/g, "");

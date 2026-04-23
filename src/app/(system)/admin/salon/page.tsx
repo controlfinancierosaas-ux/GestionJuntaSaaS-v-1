@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { formatDateForInput, parseDateFromUI } from "@/lib/formatters";
 
 export default function SalonReservasPage() {
   const [reservas, setReservas] = useState<any[]>([]);
@@ -192,7 +193,7 @@ export default function SalonReservasPage() {
               {reservas.map(r => (
                 <tr key={r.id} className="hover:bg-neutral-750 transition-colors">
                   <td className="p-4">
-                    <div className="text-white font-bold">{new Date(r.fecha_evento).toLocaleDateString()}</div>
+                    <div className="text-white font-bold">{formatDate(r.fecha_evento)}</div>
                     <div className="text-[10px] text-neutral-500 uppercase">{r.motivo_evento}</div>
                   </td>
                   <td className="p-4">
@@ -246,7 +247,7 @@ export default function SalonReservasPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Fecha del Evento</label>
-                <input type="date" required className="w-full bg-neutral-800 p-3 rounded-lg text-white" onChange={e => setNuevaReserva({...nuevaReserva, fecha_evento: e.target.value})} />
+                <input type="text" required value={formatDateForInput(nuevaReserva.fecha_evento)} className="w-full bg-neutral-800 p-3 rounded-lg text-white" placeholder="dd/mm/yyyy" onChange={e => setNuevaReserva({...nuevaReserva, fecha_evento: parseDateFromUI(e.target.value)})} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Motivo / Tipo de Evento</label>

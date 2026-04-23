@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { formatDateForInput, parseDateFromUI } from "@/lib/formatters";
 
 export default function PublicSalonReservaPage() {
   const [edificios, setEdificios] = useState<any[]>([]);
@@ -135,7 +136,7 @@ export default function PublicSalonReservaPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Fecha del Evento</label>
-              <input type="date" required className="w-full bg-black border border-neutral-800 p-4 rounded-xl text-white" onChange={e => setFormData({...formData, fecha_evento: e.target.value})} />
+              <input type="text" required value={formatDateForInput(formData.fecha_evento)} className="w-full bg-black border border-neutral-800 p-4 rounded-xl text-white" placeholder="dd/mm/yyyy" onChange={e => setFormData({...formData, fecha_evento: parseDateFromUI(e.target.value)})} />
             </div>
             <div>
               <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Motivo del Evento</label>

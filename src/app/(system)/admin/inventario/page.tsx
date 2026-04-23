@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { formatDateForInput, parseDateFromUI } from "@/lib/formatters";
 
 export default function InventarioPage() {
   const [view, setView] = useState<"stock" | "catalogo">("stock");
@@ -275,11 +276,12 @@ export default function InventarioPage() {
                     <div>
                       <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Fecha</label>
                       <input 
-                        type="date" 
+                        type="text" 
                         required={vincularGasto}
-                        value={nuevoMov.fecha_factura}
+                        value={formatDateForInput(nuevoMov.fecha_factura)}
                         className="w-full bg-neutral-700 p-2 rounded-lg text-white text-xs"
-                        onChange={e => setNuevoMov({...nuevoMov, fecha_factura: e.target.value})}
+                        placeholder="dd/mm/yyyy"
+                        onChange={e => setNuevoMov({...nuevoMov, fecha_factura: parseDateFromUI(e.target.value)})}
                       />
                     </div>
                   </div>

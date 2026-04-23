@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { formatDate, formatDateForInput, parseDateFromUI } from "@/lib/formatters";
 
 const CATEGORIES = ["Ascensores", "Bombas de Agua", "CCTV / Cámaras", "Electricidad", "Jardinería", "Limpieza", "Pintura", "Plomería", "Portones", "Otros"];
 
@@ -310,20 +311,22 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-2">Fecha Inicio</label>
                   <input
-                    type="date"
-                    value={formData.fecha_inicio_contrato}
-                    onChange={e => setFormData({ ...formData, fecha_inicio_contrato: e.target.value })}
+                    type="text"
+                    value={formatDateForInput(formData.fecha_inicio_contrato)}
+                    onChange={e => setFormData({ ...formData, fecha_inicio_contrato: parseDateFromUI(e.target.value) })}
                     className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                    placeholder="dd/mm/yyyy"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-2">Fecha Vencimiento</label>
                   <input
-                    type="date"
-                    value={formData.fecha_vencimiento_contrato}
-                    onChange={e => setFormData({ ...formData, fecha_vencimiento_contrato: e.target.value })}
+                    type="text"
+                    value={formatDateForInput(formData.fecha_vencimiento_contrato)}
+                    onChange={e => setFormData({ ...formData, fecha_vencimiento_contrato: parseDateFromUI(e.target.value) })}
                     className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                    placeholder="dd/mm/yyyy"
                   />
                 </div>
 
@@ -656,7 +659,7 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
                             <span key={i}>{i < ev.puntaje ? "⭐" : "☆"}</span>
                           ))}
                         </div>
-                        <span className="text-xs text-neutral-500">{new Date(ev.fecha_evaluacion).toLocaleDateString()}</span>
+                        <span className="text-xs text-neutral-500">{formatDate(ev.fecha_evaluacion)}</span>
                       </div>
                       <p className="text-sm text-white font-medium mb-1">{ev.criterio_resumido}</p>
                       <p className="text-sm text-neutral-400 italic">"{ev.comentarios}"</p>

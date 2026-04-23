@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { formatDateForInput, parseDateFromUI } from "@/lib/formatters";
 
 export default function GestionCalidadPage() {
   const router = useRouter();
@@ -172,9 +173,10 @@ export default function GestionCalidadPage() {
             <div className="flex items-center gap-2">
               <label className="text-xs text-neutral-400 uppercase font-bold">Desde:</label>
               <input
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
+                type="text"
+                value={formatDateForInput(dateFrom)}
+                onChange={e => setDateFrom(parseDateFromUI(e.target.value))}
+                placeholder="dd/mm/yyyy"
                 className="bg-neutral-700 border border-neutral-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
@@ -182,9 +184,10 @@ export default function GestionCalidadPage() {
             <div className="flex items-center gap-2">
               <label className="text-xs text-neutral-400 uppercase font-bold">Hasta:</label>
               <input
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
+                type="text"
+                value={formatDateForInput(dateTo)}
+                onChange={e => setDateTo(parseDateFromUI(e.target.value))}
+                placeholder="dd/mm/yyyy"
                 className="bg-neutral-700 border border-neutral-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
@@ -239,11 +242,7 @@ export default function GestionCalidadPage() {
                     </div>
                     <div>
                       <p className="text-xs text-neutral-500 uppercase font-semibold">Fecha</p>
-                      <p className="text-sm text-neutral-300">{new Date(ev.fecha_evaluacion).toLocaleDateString('es-VE', { 
-                        day: '2-digit', 
-                        month: 'long', 
-                        year: 'numeric' 
-                      })}</p>
+                      <p className="text-sm text-neutral-300">{formatDate(ev.fecha_evaluacion)}</p>
                     </div>
                     <button 
                       onClick={() => router.push(`/admin/proveedores/${ev.proveedor_id}`)}

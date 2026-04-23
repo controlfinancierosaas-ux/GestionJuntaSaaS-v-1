@@ -207,7 +207,7 @@ function generarReporteHTML({ grupos, inconsistencias, stats }: any) {
               <tbody>
                 ${grupos[responsable].map((inc: any) => `
                   <tr>
-                    <td style="white-space: nowrap; color: #6b7280;">${new Date(inc.created_at).toLocaleDateString('es-VE')}</td>
+                    <td style="white-space: nowrap; color: #6b7280;">${new Date(inc.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
                     <td>
                       <div style="font-weight: 600;">${inc.area_afectada}</div>
                       <div style="font-size: 11px; color: #6b7280;">${inc.unidad_codigo} - ${inc.reportado_por}</div>
