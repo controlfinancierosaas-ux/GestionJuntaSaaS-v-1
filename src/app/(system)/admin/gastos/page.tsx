@@ -37,7 +37,7 @@ export default function GastosPage() {
     fecha_envio_administradora: "",
     pagador_nombre: "",
     estatus_pago: "Pendiente",
-    items: []
+    items: [] as any[]
   };
 
   const [nuevoGasto, setNuevaGasto] = useState(initialGasto);
