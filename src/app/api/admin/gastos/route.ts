@@ -37,29 +37,18 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { items, ...gastoData } = body;
 
-    // Campos permitidos en la tabla gastos_facturas (según sql/gestion_gastos.sql)
-    const allowedFields = [
-      "edificio_id", "proveedor_id", "incidencia_id", "fecha_factura", "fecha_ejecucion",
-      "numero_comprobante", "concepto_descripcion", "monto_usd", "monto_bs", "tasa_bcv_factura",
-      "categoria_gasto", "tipo_mantenimiento", "metodo_pago_sugerido", "estatus_pago",
-      "fecha_pago", "monto_pagado_bs", "responsable_autoriza", "hallazgos_anomalias",
-      "fecha_proximo_mantenimiento", "observaciones", "documentos_urls",
-      "posee_comprobante", "fecha_envio_administradora", "pagador_nombre"
-    ];
-
-    const cleanData: Record<string, any> = { edificio_id };
-    for (const key of allowedFields) {
-      if (gastoData[key] !== undefined) {
-        // Asegurar que las fechas vacías sean null para la DB
-        if (key.startsWith("fecha_") && gastoData[key] === "") {
-          cleanData[key] = null;
-        } else {
-          cleanData[key] = gastoData[key];
-        }
+    // Limpieza de datos para compatibilidad con Supabase (Strings vacíos -> null)
+    const dataToSave: Record<string, any> = { ...gastoData, edificio_id };
+    
+    for (const key in dataToSave) {
+      const val = dataToSave[key];
+      // 1. Manejo de Fechas y UUIDs vacíos
+      if (val === "" && (key.startsWith("fecha_") || key.endsWith("_id"))) {
+        dataToSave[key] = null;
       }
     }
     
-    // 1. Insertar el gasto principal
+    // 1. Insertar el gasto principal (Transparente: guarda todo lo que venga del form)
     const res = await fetch(`${supabaseUrl}/rest/v1/gastos_facturas`, {
       method: "POST",
       headers: {
@@ -68,7 +57,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         "Prefer": "return=representation"
       },
-      body: JSON.stringify(cleanData),
+      body: JSON.stringify(dataToSave),
     });
 
     if (!res.ok) {
