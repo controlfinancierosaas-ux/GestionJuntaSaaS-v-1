@@ -407,21 +407,57 @@ export default function GastosPage() {
                     <button 
                       type="button" 
                       onClick={() => setShowNewProvModal(true)}
-                      className="px-4 py-2 bg-neutral-700 text-emerald-400 rounded-lg hover:bg-neutral-600 font-bold border border-emerald-500/30"
+                      className="px-4 py-2 bg-neutral-700 text-emerald-400 rounded-lg hover:bg-neutral-600 font-bold border border-emerald-500/30 text-[10px] uppercase whitespace-nowrap"
                     >
-                      + NUEVO
+                      + NUEVO PROVEEDOR
                     </button>
                   </div>
                 </div>
+                <div className="md:col-span-1">
+                  <label className="block text-xs font-bold text-neutral-500 mb-1 uppercase">Clasificación del Gasto</label>
+                  <select
+                    value={nuevoGasto.categoria_gasto}
+                    onChange={e => setNuevaGasto({...nuevoGasto, categoria_gasto: e.target.value})}
+                    className="w-full bg-neutral-800 border border-neutral-700 p-3 rounded-lg text-white text-sm"
+                  >
+                    <option value="Mantenimiento Recurrente">Mantenimiento Recurrente</option>
+                    <option value="Reparación Puntual">Reparación Puntual</option>
+                    <option value="Insumos / Repuestos">Insumos / Repuestos</option>
+                    <option value="Servicios Básicos">Servicios Básicos (Luz/Agua/etc)</option>
+                    <option value="Honorarios Profesionales">Honorarios Profesionales</option>
+                    <option value="Otros">Otros</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Bloque Extra: Tipo de Mantenimiento */}
+              <div className="grid md:grid-cols-2 gap-4 bg-emerald-900/5 p-4 rounded-xl border border-emerald-500/10">
                 <div>
-                   <label className="flex items-center gap-2 text-white cursor-pointer mb-4">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Tipo de Servicio</label>
+                  <div className="flex gap-4">
+                    {["Preventivo", "Correctivo", "Mejora", "Emergencia"].map(tipo => (
+                      <label key={tipo} className="flex items-center gap-2 text-white cursor-pointer group">
+                        <input 
+                          type="radio" 
+                          name="tipo_mant"
+                          checked={nuevoGasto.tipo_mantenimiento === tipo}
+                          onChange={() => setNuevaGasto({...nuevoGasto, tipo_mantenimiento: tipo})}
+                          className="w-4 h-4 accent-emerald-500"
+                        />
+                        <span className="text-xs group-hover:text-emerald-400 transition-colors">{tipo}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                   <label className="flex items-center gap-2 text-white cursor-pointer mt-4 md:mt-0 justify-end h-full">
                      <input 
                        type="checkbox" 
                        checked={nuevoGasto.posee_comprobante} 
                        onChange={e => setNuevaGasto({...nuevoGasto, posee_comprobante: e.target.checked})}
-                       className="w-4 h-4"
+                       className="w-4 h-4 accent-emerald-500"
                      />
-                     <span className="text-sm">¿Posee Factura/Nota?</span>
+                     <span className="text-sm font-bold">¿Posee Factura/Nota Física?</span>
                    </label>
                 </div>
               </div>
