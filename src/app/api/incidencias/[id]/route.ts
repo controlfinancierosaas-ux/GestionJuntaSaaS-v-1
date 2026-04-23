@@ -74,11 +74,12 @@ export async function PATCH(
 
     // --- LÓGICA DE CARPETAS DRIVE PARA DOCUMENTOS DE JUNTA ---
     if (updateData.documentos_junta && Array.isArray(updateData.documentos_junta)) {
+      console.log("Processing documentos_junta for Drive upload...");
       const { getBuildingFolders, uploadFileToDrive } = await import("@/lib/googleDrive");
       
       // Necesitamos el edificio_id
       const incidentRes = await fetch(`${supabaseUrl}/rest/v1/incidencias?id=eq.${id}&select=edificio_id`, {
-        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+        headers: { "apikey": supabaseKey, "Authorization": `Bearer ${apiKey}` },
       });
       const incidentInfo = await incidentRes.json();
       const edificio_id = incidentInfo[0]?.edificio_id;
@@ -89,11 +90,14 @@ export async function PATCH(
         });
         const buildings = await buildingRes.json();
         const buildingName = buildings[0]?.nombre || "Desconocido";
+        console.log(`Building found: ${buildingName}, fetching folders...`);
         
-        const { juntaReports } = await getBuildingFolders(buildingName);
+        const folders = await getBuildingFolders(buildingName);
+        const { juntaReports } = folders;
 
         for (const doc of updateData.documentos_junta) {
           if (doc.content) { // Si tiene content es que es nuevo por subir
+            console.log(`Uploading new file to Drive: ${doc.name}`);
             const buffer = Buffer.from(doc.content, "base64");
             const resDrive = await uploadFileToDrive(buffer, doc.name, "application/octet-stream", juntaReports);
             doc.url = resDrive.webViewLink;
@@ -101,6 +105,8 @@ export async function PATCH(
             delete doc.content; // No guardar el base64 en la DB
           }
         }
+      } else {
+        console.error("No edificio_id found for incident:", id);
       }
     }
     // ---------------------------------------------------------

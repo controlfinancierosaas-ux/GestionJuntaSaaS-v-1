@@ -32,11 +32,19 @@ export default function IncidentDetailPage() {
   });
   const [gastoData, setGastoData] = useState({
     fecha_factura: new Date().toISOString().split('T')[0],
+    fecha_ejecucion: new Date().toISOString().split('T')[0],
     numero_comprobante: "",
     monto_usd: "",
     monto_bs: "",
     tasa_bcv_factura: "",
-    metodo_pago_sugerido: "Administradora"
+    metodo_pago_sugerido: "Administradora",
+    tipo_mantenimiento: "Correctivo",
+    categoria_gasto: "Reparación",
+    concepto_descripcion: "",
+    hallazgos_anomalias: "",
+    fecha_proximo_mantenimiento: "",
+    responsable_autoriza: "",
+    items: [{ articulo_nombre: "", categoria: "", cantidad: 1, unidad: "Unidad", monto_renglon_bs: 0 }]
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -81,8 +89,8 @@ export default function IncidentDetailPage() {
     const usd = bs / tasa;
     setIncident({
       ...incident,
-      monto_bs: bs,
-      monto_usd: Number(usd.toFixed(2))
+      monto_bs: val === "" ? "" : bs,
+      monto_usd: val === "" ? "" : Number(usd.toFixed(2))
     });
   };
 
@@ -92,8 +100,8 @@ export default function IncidentDetailPage() {
     const bs = usd * tasa;
     setIncident({
       ...incident,
-      monto_usd: usd,
-      monto_bs: Number(bs.toFixed(2))
+      monto_usd: val === "" ? "" : usd,
+      monto_bs: val === "" ? "" : Number(bs.toFixed(2))
     });
   };
 
@@ -103,8 +111,8 @@ export default function IncidentDetailPage() {
     const usd = tasa > 0 ? bs / tasa : 0;
     setIncident({
       ...incident,
-      tasa_cambio: tasa,
-      monto_usd: Number(usd.toFixed(2))
+      tasa_cambio: val === "" ? "" : tasa,
+      monto_usd: val === "" ? "" : Number(usd.toFixed(2))
     });
   };
 
@@ -264,7 +272,7 @@ export default function IncidentDetailPage() {
 
       setShowEvalModal(false);
       // 3. Preguntar si quiere añadir gasto
-      if (confirm("Incidencia resuelta. ¿Desea registrar la factura o gasto asociado ahora?")) {
+      if (confirm("Incidencia resuelta. ¿Desea registrar una factura asociada a la incidencia a cerrar en el control y gestión de gastos?")) {
         setGastoData({
           ...gastoData,
           monto_bs: incident.monto_bs?.toString() || "",
@@ -291,12 +299,11 @@ export default function IncidentDetailPage() {
         ...gastoData,
         proveedor_id: incident.proveedor_id,
         incidencia_id: params.id,
-        concepto_descripcion: `Resolución Incidencia ${incident.codigo_personalizado || params.id}: ${incident.area_afectada}`,
+        concepto_descripcion: gastoData.concepto_descripcion || `Resolución Incidencia ${incident.codigo_personalizado || params.id}: ${incident.area_afectada}`,
         monto_usd: parseFloat(gastoData.monto_usd) || 0,
         monto_bs: parseFloat(gastoData.monto_bs) || 0,
         tasa_bcv_factura: parseFloat(gastoData.tasa_bcv_factura) || 0,
-        tipo_mantenimiento: 'Correctivo',
-        categoria_gasto: 'Reparación'
+        items: gastoData.items.filter(it => it.articulo_nombre !== "")
       };
 
       const res = await fetch("/api/admin/gastos", {
@@ -306,8 +313,11 @@ export default function IncidentDetailPage() {
       });
 
       if (res.ok) {
+        setShowGastoModal(false);
         alert("Gasto registrado y incidencia cerrada exitosamente.");
         router.push("/admin/incidencias");
+      } else {
+        alert("Error al registrar el gasto");
       }
     } catch (err) {
       alert("Error al registrar el gasto");
@@ -490,7 +500,7 @@ export default function IncidentDetailPage() {
               <input
                 type="number"
                 step="0.01"
-                value={incident.monto_bs || 0}
+                value={incident.monto_bs ?? ""}
                 onChange={e => handleMontoBsChange(e.target.value)}
                 placeholder="0.00"
                 className="w-full bg-neutral-700 p-2 rounded"
@@ -501,7 +511,7 @@ export default function IncidentDetailPage() {
               <input
                 type="number"
                 step="0.01"
-                value={incident.monto_usd || 0}
+                value={incident.monto_usd ?? ""}
                 onChange={e => handleMontoUsdChange(e.target.value)}
                 placeholder="0.00"
                 className="w-full bg-neutral-700 p-2 rounded"
@@ -512,7 +522,7 @@ export default function IncidentDetailPage() {
               <input
                 type="number"
                 step="0.0001"
-                value={incident.tasa_cambio || 0}
+                value={incident.tasa_cambio ?? ""}
                 onChange={e => handleTasaChange(e.target.value)}
                 placeholder="0.0000"
                 className="w-full bg-neutral-700 p-2 rounded text-emerald-400 font-bold"
@@ -739,79 +749,149 @@ export default function IncidentDetailPage() {
       {/* Modal de Registro de Gasto tras Resolución */}
       {showGastoModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto text-white">
-          <div className="bg-neutral-800 border border-neutral-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+          <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-8 w-full max-w-4xl shadow-2xl my-auto">
             <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-              <span>💸</span> Datos de Facturación
+              <span>💸</span> Registro de Gasto / Factura de Resolución
             </h3>
             
-            <form onSubmit={handleSaveGasto} className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
+            <form onSubmit={handleSaveGasto} className="space-y-6">
+              <div className="grid md:grid-cols-4 gap-4 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Fecha de Factura</label>
+                  <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Fecha Factura</label>
                   <input
                     type="date"
                     required
                     value={gastoData.fecha_factura}
                     onChange={e => setGastoData({...gastoData, fecha_factura: e.target.value})}
-                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
+                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Nº Factura</label>
+                  <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Fecha Ejecución</label>
+                  <input
+                    type="date"
+                    required
+                    value={gastoData.fecha_ejecucion}
+                    onChange={e => setGastoData({...gastoData, fecha_ejecucion: e.target.value})}
+                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Nº Factura</label>
                   <input
                     type="text"
                     value={gastoData.numero_comprobante}
                     onChange={e => setGastoData({...gastoData, numero_comprobante: e.target.value})}
-                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
+                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
+                    placeholder="S/N"
                   />
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Monto USD</label>
+                  <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Monto Bs.</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={gastoData.monto_bs ?? ""}
+                    onChange={e => handleGastoBsChange(e.target.value)}
+                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Tasa BCV</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={gastoData.tasa_bcv_factura ?? ""}
+                    onChange={e => handleGastoTasaChange(e.target.value)}
+                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white font-bold text-emerald-400 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-neutral-400 mb-1 uppercase">Monto USD</label>
                   <input
                     type="number"
                     step="0.01"
                     required
-                    value={gastoData.monto_usd}
+                    value={gastoData.monto_usd ?? ""}
                     onChange={e => handleGastoUsdChange(e.target.value)}
-                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Tasa BCV</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={gastoData.tasa_bcv_factura}
-                    onChange={e => handleGastoTasaChange(e.target.value)}
-                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white font-bold text-emerald-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Monto Bs.</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={gastoData.monto_bs}
-                    onChange={e => handleGastoBsChange(e.target.value)}
-                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
+                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Método de Pago Sugerido</label>
-                <select
-                  value={gastoData.metodo_pago_sugerido}
-                  onChange={e => setGastoData({...gastoData, metodo_pago_sugerido: e.target.value})}
-                  className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
-                >
-                  <option value="Administradora">Vía Administradora</option>
-                  <option value="Caja Chica">Caja Chica / Efectivo</option>
-                  <option value="Pago Móvil">Transferencia / Pago Móvil</option>
-                </select>
+                <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Concepto / Descripción</label>
+                <input
+                  type="text"
+                  value={gastoData.concepto_descripcion}
+                  onChange={e => setGastoData({...gastoData, concepto_descripcion: e.target.value})}
+                  placeholder="Ej: Pago de reparacion de tubería..."
+                  className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white text-sm"
+                />
+              </div>
+
+              {/* Renglones de Artículos */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold text-emerald-500 flex justify-between">
+                  ARTÍCULOS / MATERIALES (OPCIONAL)
+                  <button type="button" onClick={() => {
+                    if (gastoData.items.length < 10) {
+                      setGastoData({...gastoData, items: [...gastoData.items, { articulo_nombre: "", categoria: "", cantidad: 1, unidad: "Unidad", monto_renglon_bs: 0 }]});
+                    }
+                  }} className="text-xs bg-emerald-900/30 px-2 py-1 rounded">+ Agregar</button>
+                </h4>
+                {gastoData.items.map((it, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2">
+                    <input type="number" value={it.cantidad} onChange={e => {
+                      const items = [...gastoData.items];
+                      items[idx].cantidad = parseFloat(e.target.value);
+                      setGastoData({...gastoData, items});
+                    }} className="col-span-1 bg-neutral-700 p-2 rounded text-white text-xs" />
+                    <input type="text" value={it.articulo_nombre} onChange={e => {
+                      const items = [...gastoData.items];
+                      items[idx].articulo_nombre = e.target.value;
+                      setGastoData({...gastoData, items});
+                    }} className="col-span-6 bg-neutral-700 p-2 rounded text-white text-xs" placeholder="Nombre material" />
+                    <input type="number" value={it.monto_renglon_bs} onChange={e => {
+                      const items = [...gastoData.items];
+                      items[idx].monto_renglon_bs = parseFloat(e.target.value);
+                      setGastoData({...gastoData, items});
+                    }} className="col-span-3 bg-neutral-700 p-2 rounded text-white text-xs text-right" placeholder="Monto Bs." />
+                    <button type="button" onClick={() => {
+                      setGastoData({...gastoData, items: gastoData.items.filter((_, i) => i !== idx)});
+                    }} className="col-span-2 text-red-400 text-xs">Quitar</button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Método de Pago</label>
+                  <select
+                    value={gastoData.metodo_pago_sugerido}
+                    onChange={e => setGastoData({...gastoData, metodo_pago_sugerido: e.target.value})}
+                    className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
+                  >
+                    <option value="Administradora">Vía Administradora</option>
+                    <option value="Caja Chica">Caja Chica / Efectivo</option>
+                    <option value="Pago Móvil">Transferencia / Pago Móvil</option>
+                  </select>
+                </div>
+                {gastoData.metodo_pago_sugerido === 'Caja Chica' && (
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-400 mb-1 uppercase">Responsable (Caja Chica)</label>
+                    <input
+                      type="text"
+                      value={gastoData.responsable_autoriza}
+                      onChange={e => setGastoData({...gastoData, responsable_autoriza: e.target.value})}
+                      className="w-full bg-neutral-700 border border-neutral-600 p-2 rounded text-white"
+                      placeholder="Nombre responsable"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-neutral-700">
@@ -820,7 +900,7 @@ export default function IncidentDetailPage() {
                   disabled={saving}
                   className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl"
                 >
-                  {saving ? "Registrando..." : "GUARDAR GASTO Y CERRAR"}
+                  {saving ? "REGISTRANDO..." : "GUARDAR GASTO Y CERRAR INCIDENCIA"}
                 </button>
                 <button
                   type="button"

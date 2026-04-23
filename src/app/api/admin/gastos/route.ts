@@ -59,7 +59,8 @@ export async function POST(req: Request) {
 
     // 1.1. Si el método de pago es Caja Chica, registrar el movimiento de salida
     if (gastoData.metodo_pago_sugerido === "Caja Chica") {
-      await fetch(`${supabaseUrl}/rest/v1/caja_chica`, {
+      console.log("Registrando egreso automático en Caja Chica...");
+      const ccRes = await fetch(`${supabaseUrl}/rest/v1/caja_chica`, {
         method: "POST",
         headers: {
           "apikey": supabaseKey,
@@ -70,14 +71,20 @@ export async function POST(req: Request) {
           edificio_id,
           concepto: `Gasto: ${gastoData.concepto_descripcion || "Sin descripción"}`,
           tipo: "Egreso",
-          monto: gastoData.monto_usd || 0,
-          monto_usd: gastoData.monto_usd || 0,
-          monto_bs: gastoData.monto_bs || 0,
-          tasa_bcv: gastoData.tasa_bcv_factura || 0,
+          monto: parseFloat(gastoData.monto_usd) || 0,
+          monto_usd: parseFloat(gastoData.monto_usd) || 0,
+          monto_bs: parseFloat(gastoData.monto_bs) || 0,
+          tasa_bcv: parseFloat(gastoData.tasa_bcv_factura) || 0,
           fecha: gastoData.fecha_factura || new Date().toISOString(),
-          notas: `Vinculado a Gasto ID: ${gastoId}`
+          responsable: gastoData.responsable_autoriza || "Administración",
+          notas: `Vinculado a Gasto ID: ${gastoId}. Ref: ${gastoData.numero_comprobante || 'S/N'}`
         }),
       });
+      if (!ccRes.ok) {
+        console.error("Error registrando en Caja Chica:", await ccRes.text());
+      } else {
+        console.log("Egreso en Caja Chica registrado con éxito.");
+      }
     }
 
     // 2. Si hay items de inventario, insertarlos vinculados al gasto
