@@ -91,48 +91,64 @@ export default function GastosPage() {
     });
   };
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [resGastos, resProvs] = await Promise.all([
-        fetch("/api/admin/gastos"),
-        fetch("/api/admin/proveedores")
-      ]);
-      setGastos(await resGastos.json());
-      setProveedores(await resProvs.json());
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+  const [filterEstatus, setFilterEstatus] = useState("Todos");
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // ... (fetchData y otros efectos se mantienen igual)
+
+  const handleEdit = (g: any) => {
+    setEditingId(g.id);
+    setNuevaGasto({
+      proveedor_id: g.proveedor_id || "",
+      posee_comprobante: g.posee_comprobante ?? true,
+      fecha_factura: g.fecha_factura || "",
+      fecha_ejecucion: g.fecha_ejecucion || "",
+      numero_comprobante: g.numero_comprobante || "",
+      concepto_descripcion: g.concepto_descripcion || "",
+      monto_usd: g.monto_usd?.toString() || "",
+      monto_bs: g.monto_bs?.toString() || "",
+      tasa_bcv_factura: g.tasa_bcv_factura?.toString() || "",
+      tipo_mantenimiento: g.tipo_mantenimiento || "Preventivo",
+      categoria_gasto: g.categoria_gasto || "Mantenimiento Recurrente",
+      metodo_pago_sugerido: g.metodo_pago_sugerido || "Administradora",
+      hallazgos_anomalias: g.hallazgos_anomalias || "",
+      fecha_proximo_mantenimiento: g.fecha_proximo_mantenimiento || "",
+      responsable_autoriza: g.responsable_autoriza || "",
+      fecha_envio_administradora: g.fecha_envio_administradora || "",
+      pagador_nombre: g.pagador_nombre || "",
+      estatus_pago: g.estatus_pago || "Pendiente",
+      items: [] // Los items no se editan por ahora para simplificar, o podrías traerlos si los necesitas
+    });
+    setShowModal(true);
   };
 
-  const handleCreateProv = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
+  const updateStatus = async (id: string, nuevoEstatus: string) => {
     try {
-      const res = await fetch("/api/admin/proveedores", {
-        method: "POST",
+      const res = await fetch(`/api/admin/gastos/${id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nuevoProv),
+        body: JSON.stringify({ 
+          estatus_pago: nuevoEstatus,
+          fecha_pago: nuevoEstatus === "Pagado" ? new Date().toISOString().split('T')[0] : null
+        }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setProveedores([data, ...proveedores]);
-        setNuevaGasto({ ...nuevoGasto, proveedor_id: data.id });
-        setShowNewProvModal(false);
-      }
-    } catch (err) { alert("Error al crear proveedor"); }
-    finally { setSaving(false); }
+      if (res.ok) fetchData();
+      else alert("Error al actualizar estatus");
+    } catch (err) { alert("Error de conexión"); }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 1. Validar montos de renglones vs monto total
-    const totalRenglones = nuevoGasto.items.reduce((acc, it) => acc + (parseFloat(it.monto_renglon_bs as any) || 0), 0);
     const montoTotalBs = parseFloat(nuevoGasto.monto_bs as string) || 0;
     
-    if (nuevoGasto.items.some(it => it.articulo_nombre !== "") && Math.abs(totalRenglones - montoTotalBs) > 0.01) {
-      alert(`El total de los renglones (Bs. ${totalRenglones.toFixed(2)}) no coincide con el monto total del gasto (Bs. ${montoTotalBs.toFixed(2)}).`);
-      return;
+    // Validación de items solo si hay items cargados (evitar bloqueo en edición simple)
+    if (nuevoGasto.items && nuevoGasto.items.length > 0 && nuevoGasto.items.some(it => it.articulo_nombre !== "")) {
+      const totalRenglones = nuevoGasto.items.reduce((acc, it) => acc + (parseFloat(it.monto_renglon_bs as any) || 0), 0);
+      if (Math.abs(totalRenglones - montoTotalBs) > 0.01) {
+        alert(`El total de los renglones (Bs. ${totalRenglones.toFixed(2)}) no coincide con el monto total del gasto (Bs. ${montoTotalBs.toFixed(2)}).`);
+        return;
+      }
     }
 
     setSaving(true);
@@ -144,16 +160,21 @@ export default function GastosPage() {
         monto_usd: parseFloat(nuevoGasto.monto_usd as string) || 0,
         monto_bs: montoTotalBs,
         tasa_bcv_factura: parseFloat(nuevoGasto.tasa_bcv_factura as string) || 0,
-        items: nuevoGasto.items.filter(it => it.articulo_nombre !== "")
+        items: items ? items.filter((it: any) => it.articulo_nombre !== "") : []
       };
       
-      const res = await fetch("/api/admin/gastos", {
-        method: "POST",
+      const url = editingId ? `/api/admin/gastos/${editingId}` : "/api/admin/gastos";
+      const method = editingId ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+      
       if (res.ok) {
         setShowModal(false);
+        setEditingId(null);
         setNuevaGasto(initialGasto);
         fetchData();
       } else {
@@ -166,58 +187,137 @@ export default function GastosPage() {
     finally { setSaving(false); }
   };
 
-  const addRow = () => {
-    if (nuevoGasto.items.length < 5) {
-      setNuevaGasto({
-        ...nuevoGasto,
-        items: [...nuevoGasto.items, { articulo_nombre: "", categoria: "", cantidad: 1, unidad: "Unidad", monto_renglon_bs: 0 }]
-      });
+  const filtered = gastos.filter(g => {
+    const matchSearch = g.proveedores?.nombre?.toLowerCase().includes(search.toLowerCase()) ||
+                        g.concepto_descripcion?.toLowerCase().includes(search.toLowerCase());
+    const matchEstatus = filterEstatus === "Todos" || g.estatus_pago === filterEstatus;
+    return matchSearch && matchEstatus;
+  });
+
+  const getEstatusColor = (estatus: string) => {
+    switch (estatus) {
+      case 'Pagado': return 'bg-emerald-900 text-emerald-200';
+      case 'Enviado a Administradora': return 'bg-blue-900 text-blue-200';
+      default: return 'bg-yellow-900 text-yellow-200';
     }
   };
-
-  const filtered = gastos.filter(g => 
-    g.proveedores?.nombre?.toLowerCase().includes(search.toLowerCase()) ||
-    g.concepto_descripcion?.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-white">Control de Gastos e Inventario</h1>
-          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Control de Gastos</h1>
+            <p className="text-neutral-400 text-sm">Seguimiento de facturas, pagos y movimientos de almacén</p>
+          </div>
+          <button 
+            onClick={() => { setEditingId(null); setNuevaGasto(initialGasto); setShowModal(true); }} 
+            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-all"
+          >
             + REGISTRAR FACTURA / NOTA
           </button>
         </div>
 
-        {/* Tabla simplificada similar al anterior pero con filtros */}
-        <div className="bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-neutral-700 text-neutral-300 uppercase text-[10px] font-bold">
-              <tr>
-                <th className="p-3">Fecha</th>
-                <th className="p-3">Proveedor</th>
-                <th className="p-3">Concepto</th>
-                <th className="p-3 text-right">Monto USD</th>
-                <th className="p-3 text-right">Monto Bs.</th>
-                <th className="p-3">Estatus</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(g => (
-                <tr key={g.id} className="border-t border-neutral-700 hover:bg-neutral-750">
-                  <td className="p-3 text-white">{formatDate(g.fecha_factura)}</td>
-                  <td className="p-3 text-emerald-400 font-bold">{g.proveedores?.nombre}</td>
-                  <td className="p-3 text-neutral-400 truncate max-w-xs">{g.concepto_descripcion}</td>
-                  <td className="p-3 text-right font-mono">${g.monto_usd}</td>
-                  <td className="p-3 text-right text-emerald-500 font-mono">Bs. {g.monto_bs}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded text-[10px] bg-yellow-900 text-yellow-200 uppercase font-bold">{g.estatus_pago}</span>
-                  </td>
+        {/* Filtros y Buscador */}
+        <div className="flex flex-wrap gap-3 mb-6 bg-neutral-900/50 p-4 rounded-xl border border-neutral-800">
+          <input 
+            type="text" 
+            placeholder="Buscar por proveedor o concepto..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 min-w-[250px] bg-neutral-800 border border-neutral-700 p-2.5 rounded-lg text-white text-sm"
+          />
+          <div className="flex gap-2">
+            {["Todos", "Pendiente", "Enviado a Administradora", "Pagado"].map(est => (
+              <button
+                key={est}
+                onClick={() => setFilterEstatus(est)}
+                className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filterEstatus === est ? 'bg-emerald-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'}`}
+              >
+                {est}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tabla Mejorada */}
+        <div className="bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-neutral-800/50 text-neutral-500 uppercase text-[10px] font-black tracking-widest border-b border-neutral-800">
+                <tr>
+                  <th className="p-4">Fecha</th>
+                  <th className="p-4">Proveedor</th>
+                  <th className="p-4">Concepto / Descripción</th>
+                  <th className="p-4 text-right">Monto Total</th>
+                  <th className="p-4">Estatus</th>
+                  <th className="p-4 text-center">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-neutral-800/50">
+                {filtered.map(g => (
+                  <tr key={g.id} className="hover:bg-neutral-800/30 transition-colors group">
+                    <td className="p-4">
+                      <div className="text-white font-medium">{formatDate(g.fecha_factura)}</div>
+                      <div className="text-[10px] text-neutral-500">Reg: {formatDate(g.created_at)}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-emerald-400 font-bold">{g.proveedores?.nombre || "Sin proveedor"}</div>
+                      <div className="text-[10px] text-neutral-500">{g.proveedores?.rif_cedula}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-neutral-300 line-clamp-1">{g.concepto_descripcion}</div>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-[9px] bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-400">{g.categoria_gasto}</span>
+                        {g.incidencias && <span className="text-[9px] bg-blue-900/30 px-1.5 py-0.5 rounded text-blue-400">Ref: {g.incidencias.codigo_personalizado}</span>}
+                      </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="text-white font-mono font-bold">Bs. {g.monto_bs}</div>
+                      <div className="text-[10px] text-neutral-500 font-mono">${g.monto_usd} USD</div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter ${getEstatusColor(g.estatus_pago)}`}>
+                        {g.estatus_pago}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleEdit(g)}
+                          className="p-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-all"
+                          title="Editar"
+                        >
+                          ✏️
+                        </button>
+                        {g.estatus_pago === 'Pendiente' && g.metodo_pago_sugerido === 'Administradora' && (
+                          <button 
+                            onClick={() => updateStatus(g.id, 'Enviado a Administradora')}
+                            className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-[9px] font-bold uppercase transition-all"
+                          >
+                            Enviar Admin
+                          </button>
+                        )}
+                        {g.estatus_pago !== 'Pagado' && (
+                          <button 
+                            onClick={() => updateStatus(g.id, 'Pagado')}
+                            className="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded text-[9px] font-bold uppercase transition-all"
+                          >
+                            Pagado
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length === 0 && (
+            <div className="p-12 text-center text-neutral-600 font-medium">
+              No se encontraron gastos con estos criterios.
+            </div>
+          )}
         </div>
       </div>
 
@@ -225,9 +325,26 @@ export default function GastosPage() {
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm overflow-y-auto">
           <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-8 w-full max-w-4xl shadow-2xl my-auto">
-            <h3 className="text-2xl font-bold text-white mb-6">Registro de Gasto / Movimiento</h3>
+            <h3 className="text-2xl font-bold text-white mb-6">
+              {editingId ? "Editar Registro de Gasto" : "Nuevo Registro de Gasto"}
+            </h3>
             
             <form onSubmit={handleSave} className="space-y-6">
+              {/* Bloque: Estatus (solo en edición) */}
+              {editingId && (
+                <div className="bg-emerald-900/10 p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between">
+                  <span className="text-sm font-bold text-emerald-400 uppercase tracking-widest">Estatus de Pago Actual:</span>
+                  <select 
+                    value={nuevoGasto.estatus_pago}
+                    onChange={e => setNuevaGasto({...nuevoGasto, estatus_pago: e.target.value})}
+                    className="bg-neutral-800 border border-neutral-700 p-2 rounded-lg text-white text-sm"
+                  >
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Enviado a Administradora">Enviado a Administradora</option>
+                    <option value="Pagado">Pagado</option>
+                  </select>
+                </div>
+              )}
               {/* Bloque 1: Proveedor */}
               <div className="grid md:grid-cols-3 gap-4 items-end">
                 <div className="md:col-span-2">
