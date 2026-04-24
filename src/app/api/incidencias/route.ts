@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { uploadFileToDrive } from "@/lib/googleDrive";
 import nodemailer from "nodemailer";
+import { sendWhatsApp } from "@/lib/whatsapp";
 
 // Configuración para permitir archivos más grandes y mayor tiempo de ejecución en Vercel
 export const maxDuration = 60; // 60 segundos (requiere plan Pro, en Hobby será el máximo permitido de 10-15s)
@@ -243,6 +244,13 @@ export async function POST(request: Request) {
     // Enviar notificaciones por email
     await sendEmailNotifications(data, numeroReporte, fechaEnvio, uploadedFiles);
 
+    // Enviar notificaciones por WhatsApp a proveedores habilitados
+    try {
+      await notifyProvidersByWhatsApp(data, numeroReporte);
+    } catch (waError) {
+      console.error("Error in notifyProvidersByWhatsApp:", waError);
+    }
+
     console.log("=== Incidencia API completed ===");
 
     return NextResponse.json({
@@ -436,5 +444,44 @@ async function sendEmailNotifications(
       html: htmlUsuario,
     });
     console.log("Email enviado al residente:", data.email);
+  }
+}
+
+async function notifyProvidersByWhatsApp(data: IncidentData & { edificio_id: string }, numeroReporte: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) return;
+
+  // Buscar proveedores habilitados para WhatsApp en la misma categoría y edificio
+  // Las categorías mencionadas: Ascensores, Bombas de Agua, Portones, etc.
+  const res = await fetch(`${supabaseUrl}/rest/v1/proveedores?edificio_id=eq.${data.edificio_id}&categoria=eq.${data.tipo_incidencia}&notificar_whatsapp=eq.true`, {
+    headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+  });
+
+  if (!res.ok) return;
+  const proveedores = await res.json();
+
+  if (proveedores.length === 0) {
+    console.log(`No se encontraron proveedores para notificar por WhatsApp para la categoría: ${data.tipo_incidencia}`);
+    return;
+  }
+
+  for (const prov of proveedores) {
+    const phone = prov.whatsapp || prov.telefono;
+    if (!phone) continue;
+
+    const message = `🔔 *NUEVA INCIDENCIA REPORTADA*
+Nro. Reporte: ${numeroReporte}
+Categoría: ${data.tipo_incidencia}
+Reportado por: ${data.nombre_completo}
+Apto: ${data.apartamento}
+Prioridad: ${data.prioridad}
+Descripción: ${data.descripcion}
+Ubicación: ${data.ubicacion || 'N/A'}
+---
+GestionJuntaSaaS`;
+
+    await sendWhatsApp(data.edificio_id, phone, message);
+    console.log(`WhatsApp enviado al proveedor: ${prov.nombre} (${phone})`);
   }
 }

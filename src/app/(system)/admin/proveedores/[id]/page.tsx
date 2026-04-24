@@ -46,6 +46,7 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
     telefono_fijo: "",
     email2: "",
     whatsapp: "",
+    notificar_whatsapp: false,
     pagina_web: "",
     documentos_adicionales: [] as any[]
   });
@@ -438,13 +439,24 @@ export default function ProveedorDetallePage({ params }: { params: Promise<{ id:
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-neutral-400 mb-2">Teléfono Móvil (WhatsApp)</label>
-                <input
-                  type="text"
-                  value={formData.telefono || "+58-"}
-                  onChange={e => setFormData({ ...formData, telefono: e.target.value, whatsapp: e.target.value })}
-                  className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
-                  placeholder="+58-412-1234567"
-                />
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    value={formData.telefono || "+58-"}
+                    onChange={e => setFormData({ ...formData, telefono: e.target.value, whatsapp: e.target.value })}
+                    className="w-full px-4 py-2 bg-neutral-700 border border-neutral-600 rounded-lg focus:border-emerald-500 focus:outline-none text-white"
+                    placeholder="+58-412-1234567"
+                  />
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.notificar_whatsapp}
+                      onChange={e => setFormData({ ...formData, notificar_whatsapp: e.target.checked })}
+                      className="w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm text-neutral-300">Habilitar notificaciones por WhatsApp</span>
+                  </label>
+                </div>
               </div>
 
               <div>

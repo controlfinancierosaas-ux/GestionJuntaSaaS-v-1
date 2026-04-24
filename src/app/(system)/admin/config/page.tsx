@@ -208,6 +208,100 @@ export default function ConfigPage() {
             </div>
           </div>
 
+          {/* SECCIÓN: WHATSAPP */}
+          <div className="bg-neutral-800 border border-neutral-700 rounded-xl overflow-hidden">
+            <div className="p-6 border-b border-neutral-700 flex justify-between items-center bg-emerald-500/5">
+              <h2 className="text-lg font-semibold text-emerald-400 flex items-center gap-2">
+                <span>💬</span> Notificaciones por WhatsApp
+              </h2>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={config.whatsapp_enabled} 
+                  onChange={e => setConfig({ ...config, whatsapp_enabled: e.target.checked })} 
+                  className="sr-only peer" 
+                />
+                <div className="w-11 h-6 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                <span className="ml-3 text-sm font-medium text-neutral-300">{config.whatsapp_enabled ? 'Activado' : 'Desactivado'}</span>
+              </label>
+            </div>
+
+            <div className={`p-6 space-y-6 transition-opacity ${!config.whatsapp_enabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <label className="block text-neutral-400 text-xs font-bold uppercase tracking-wider">Servicio de Envío</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => setConfig({ ...config, whatsapp_service: 'GREENAPI' })}
+                      className={`px-3 py-3 rounded-xl text-xs font-bold border transition-all ${config.whatsapp_service === 'GREENAPI' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-neutral-700 border-neutral-600 text-neutral-400'}`}
+                    >
+                      GREEN API
+                      <span className="block text-[10px] font-normal opacity-70 mt-1">Recomendado</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setConfig({ ...config, whatsapp_service: 'WHAPI' })}
+                      className={`px-3 py-3 rounded-xl text-xs font-bold border transition-all ${config.whatsapp_service === 'WHAPI' ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-neutral-700 border-neutral-600 text-neutral-400'}`}
+                    >
+                      WHAPI
+                      <span className="block text-[10px] font-normal opacity-70 mt-1">Alternativo</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-neutral-900/50 p-4 rounded-xl border border-neutral-700 space-y-2">
+                    <h4 className="text-xs font-bold text-blue-400 uppercase">Ayuda de Configuración</h4>
+                    {config.whatsapp_service === 'GREENAPI' ? (
+                      <p className="text-[11px] text-neutral-400">1. Regístrate en green-api.com<br/>2. Escanea el QR en su consola<br/>3. Copia el ID de Instancia y el API Token</p>
+                    ) : (
+                      <p className="text-[11px] text-neutral-400">1. Regístrate en whapi.cloud<br/>2. Vincula tu número con el QR<br/>3. Copia el API Token del canal</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4 bg-neutral-900/30 p-5 rounded-2xl border border-neutral-700">
+                  <h4 className="text-white text-xs font-bold uppercase">Credenciales del Servicio</h4>
+                  
+                  {config.whatsapp_service === 'GREENAPI' ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-neutral-500 text-[10px] mb-1 font-bold">ID DE INSTANCIA</label>
+                        <input 
+                          type="text"
+                          value={config.greenapi_id_instance || ""} 
+                          onChange={e => setConfig({ ...config, greenapi_id_instance: e.target.value })}
+                          placeholder="Ej: 7107580078"
+                          className="w-full bg-neutral-700 border border-neutral-600 text-white rounded-lg px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-neutral-500 text-[10px] mb-1 font-bold">API TOKEN</label>
+                        <input 
+                          type="password"
+                          value={config.greenapi_api_token || ""} 
+                          onChange={e => setConfig({ ...config, greenapi_api_token: e.target.value })}
+                          placeholder="Tu token de Green-API"
+                          className="w-full bg-neutral-700 border border-neutral-600 text-white rounded-lg px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none" 
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-neutral-500 text-[10px] mb-1 font-bold">WHAPI TOKEN</label>
+                      <input 
+                        type="password"
+                        value={config.whapi_token || ""} 
+                        onChange={e => setConfig({ ...config, whapi_token: e.target.value })}
+                        placeholder="Tu token de Whapi.cloud"
+                        className="w-full bg-neutral-700 border border-neutral-600 text-white rounded-lg px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none" 
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-4 pt-4 border-t border-neutral-700">
             <button
               type="submit"
