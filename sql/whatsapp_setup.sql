@@ -11,6 +11,10 @@ ALTER TABLE public.edificio_config ADD COLUMN IF NOT EXISTS whatsapp_service TEX
 ALTER TABLE public.edificio_config ADD COLUMN IF NOT EXISTS greenapi_id_instance TEXT;
 ALTER TABLE public.edificio_config ADD COLUMN IF NOT EXISTS greenapi_api_token TEXT;
 ALTER TABLE public.edificio_config ADD COLUMN IF NOT EXISTS whapi_token TEXT;
+ALTER TABLE public.edificio_config ADD COLUMN IF NOT EXISTS wa_business_phone_number_id TEXT;
+ALTER TABLE public.edificio_config ADD COLUMN IF NOT EXISTS wa_business_access_token TEXT;
+ALTER TABLE public.edificio_config ADD COLUMN IF NOT EXISTS callmebot_phone TEXT;
+ALTER TABLE public.edificio_config ADD COLUMN IF NOT EXISTS callmebot_apikey TEXT;
 
 -- 3. Tabla de cola/log de WhatsApp (para auditoría de envíos)
 CREATE TABLE IF NOT EXISTS public.whatsapp_queue (
