@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       categoria: body.categoria || 'Otros',
       unidad_medida: body.unidad_medida || 'Unidad',
       stock_minimo: body.stock_minimo || 0,
+      estado: body.estado || 'Activo',
       edificio_id
     };
 
@@ -109,5 +110,35 @@ export async function PATCH(req: Request) {
   } catch (error: any) { 
     console.error("Articulos PATCH Exception:", error);
     return NextResponse.json({ error: error.message || "Error interno" }, { status: 500 }); 
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "ID Requerido" }, { status: 400 });
+
+    console.log(`Articulos DELETE ID ${id}`);
+
+    const res = await fetch(`${supabaseUrl}/rest/v1/articulos_inventario?id=eq.${id}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": supabaseKey as string,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Prefer": "return=representation"
+      }
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.error("Articulos DELETE Supabase Error:", errorData);
+      return NextResponse.json({ error: errorData.message || "Error al eliminar artículo. Puede que tenga movimientos asociados." }, { status: res.status });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Articulos DELETE Exception:", error);
+    return NextResponse.json({ error: error.message || "Error interno" }, { status: 500 });
   }
 }

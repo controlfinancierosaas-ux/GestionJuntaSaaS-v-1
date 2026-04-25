@@ -4,20 +4,23 @@ import { cookies } from "next/headers";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!supabaseUrl || !supabaseKey) {
     console.error("Inventario GET: Missing Supabase URL or Key");
     return NextResponse.json([]);
   }
 
   try {
+    const { searchParams } = new URL(req.url);
+    const raw = searchParams.get("raw") === "true";
+
     const cookieStore = await cookies();
     const userDataCookie = cookieStore.get("user_data");
     if (!userDataCookie) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { edificio_id } = JSON.parse(userDataCookie.value);
 
     // Obtenemos todos los movimientos de inventario del edificio
-    const res = await fetch(`${supabaseUrl}/rest/v1/movimientos_inventario?edificio_id=eq.${edificio_id}&select=*`, {
+    const res = await fetch(`${supabaseUrl}/rest/v1/movimientos_inventario?edificio_id=eq.${edificio_id}&order=created_at.desc`, {
       headers: { "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
     });
     
@@ -31,6 +34,10 @@ export async function GET() {
     if (!Array.isArray(movimientos)) {
       console.warn("Inventario GET: Movimientos is not an array", movimientos);
       return NextResponse.json([]);
+    }
+
+    if (raw) {
+      return NextResponse.json(movimientos);
     }
 
     // Consolidar stock en memoria (Articulo -> Cantidad)
