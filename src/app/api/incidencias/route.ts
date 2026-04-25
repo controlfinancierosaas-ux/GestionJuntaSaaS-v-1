@@ -481,7 +481,11 @@ Ubicación: ${data.ubicacion || 'N/A'}
 ---
 GestionJuntaSaaS`;
 
-    await sendWhatsApp(data.edificio_id, phone, message);
-    console.log(`WhatsApp enviado al proveedor: ${prov.nombre} (${phone})`);
+    const waResult = await sendWhatsApp(data.edificio_id, phone, message);
+    if (waResult.success) {
+      console.log(`WhatsApp enviado al proveedor: ${prov.nombre} (${phone})`);
+    } else {
+      console.error(`Fallo al enviar WhatsApp al proveedor ${prov.nombre} (${phone}):`, waResult.error);
+    }
   }
 }
