@@ -200,7 +200,7 @@ export default function InventarioPage() {
         const result = await res.json();
         console.log("Inventario Page: Article saved successfully:", result);
         setShowArticuloModal(false); 
-        setNuevoArticulo({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 1, descripcion: "", ubicacion_almacen: "Almacén PB" }); 
+        setNuevoArticulo({ id: "", nombre: "", categoria: "Otros", unidad_medida: "Unidad", stock_minimo: 1, descripcion: "", ubicacion_almacen: "Almacén PB", estado: "Activo" }); 
         fetchData(); 
       } else {
         const err = await res.json();
